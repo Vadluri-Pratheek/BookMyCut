@@ -23,14 +23,16 @@ const {
 const {
   getTravelBufferMinutes,
   getEffectiveSlotDurationMinutes,
-  normalizePoint,
 } = require('../utils/travelTime');
 const { autoCancelExpiredBookings } = require('../utils/bookingLifecycle');
 const { sendBookingCancellationNotification } = require('../utils/bookingNotifications');
 const { normalizeLocationPoint } = require('../utils/locationPoint');
+const { getBarberDefaultSchedule } = require('../utils/barberScheduleDefaults');
 
 const buildBarberDayAvailability = ({ barber, schedule, bookings, bookingType, shopLocation }) => {
-  if (!schedule) {
+  const effectiveSchedule = schedule || getBarberDefaultSchedule(barber);
+
+  if (!effectiveSchedule) {
     return null;
   }
 
@@ -38,10 +40,10 @@ const buildBarberDayAvailability = ({ barber, schedule, bookings, bookingType, s
     return null;
   }
 
-  const workStart = Number(schedule.workStart);
-  const workEnd = Number(schedule.workEnd);
+  const workStart = Number(effectiveSchedule.workStart);
+  const workEnd = Number(effectiveSchedule.workEnd);
   const occupiedIntervals = [
-    ...(schedule.breaks || []).map((item) => ({
+    ...(effectiveSchedule.breaks || []).map((item) => ({
       start: Number(item.breakStart),
       end: Number(item.breakEnd),
     })),
@@ -65,12 +67,30 @@ const buildBarberDayAvailability = ({ barber, schedule, bookings, bookingType, s
   };
 };
 
-const lockScheduleForBooking = ({ barberId, date, session }) =>
-  DaySchedule.findOneAndUpdate(
-    { barberId, date },
-    { $currentDate: { updatedAt: true } },
-    { new: true, session }
+const ensureScheduleForBooking = async ({ barber, date, session }) => {
+  const defaultSchedule = getBarberDefaultSchedule(barber);
+
+  return DaySchedule.findOneAndUpdate(
+    { barberId: barber._id, date },
+    {
+      $setOnInsert: {
+        barberId: barber._id,
+        shopId: barber.shopId,
+        date,
+        workStart: defaultSchedule.workStart,
+        workEnd: defaultSchedule.workEnd,
+        breaks: defaultSchedule.breaks,
+      },
+      $currentDate: { updatedAt: true },
+    },
+    {
+      new: true,
+      upsert: true,
+      session,
+      setDefaultsOnInsert: true,
+    }
   );
+};
 
 const isBookingWriteConflict = (error) =>
   error?.errorLabels?.includes('TransientTransactionError')
@@ -216,18 +236,16 @@ const getAvailableSlotsHandler = async (req, res, next) => {
       Booking.find({ barberId, date, status: 'upcoming' }).lean(),
     ]);
 
-    if (!schedule) {
-      return res.status(200).json({ success: true, data: { date, slots: [] } });
-    }
+    const effectiveSchedule = schedule || getBarberDefaultSchedule(barber);
 
     if (bookingType === 'homevisit' && (!barber.canOfferHomeServices || !barber.isAcceptingHomeVisitsToday)) {
       return res.status(200).json({ success: true, data: { date, slots: [] } });
     }
 
     const slots = computeAvailableSlots({
-      workStart: schedule.workStart,
-      workEnd: schedule.workEnd,
-      breaks: schedule.breaks,
+      workStart: effectiveSchedule.workStart,
+      workEnd: effectiveSchedule.workEnd,
+      breaks: effectiveSchedule.breaks,
       existingBookings,
       serviceDuration: duration,
       customerLocation,
@@ -522,8 +540,9 @@ const createBooking = async (req, res, next) => {
         if (bookingType === 'homevisit' && (!barber.canOfferHomeServices || !barber.isAcceptingHomeVisitsToday)) continue;
 
         const schedule = await DaySchedule.findOne({ barberId: barber._id, date }).session(session);
-        if (!schedule || slotStart < schedule.workStart || slotEnd > schedule.workEnd) continue;
-        if (schedule.breaks.some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
+        const effectiveSchedule = schedule || getBarberDefaultSchedule(barber);
+        if (!effectiveSchedule || slotStart < effectiveSchedule.workStart || slotEnd > effectiveSchedule.workEnd) continue;
+        if ((effectiveSchedule.breaks || []).some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
 
         const existingBookings = await Booking.find({ barberId: barber._id, date, status: 'upcoming' }).session(session);
         const occStart = slotStart;
@@ -538,6 +557,7 @@ const createBooking = async (req, res, next) => {
           eligibleBarbers.push({
             id: barber._id,
             bookingCount: existingBookings.length,
+            barber,
           });
         }
       }
@@ -553,13 +573,13 @@ const createBooking = async (req, res, next) => {
 
       // STEP 4 - Conflict check inside transaction
       for (const candidate of eligibleBarbers) {
-        const lockedSchedule = await lockScheduleForBooking({
-          barberId: candidate.id,
+        const lockedSchedule = await ensureScheduleForBooking({
+          barber: candidate.barber,
           date,
           session,
         });
         if (!lockedSchedule || slotStart < lockedSchedule.workStart || slotEnd > lockedSchedule.workEnd) continue;
-        if (lockedSchedule.breaks.some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
+        if ((lockedSchedule.breaks || []).some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
 
         // Re-verify chosen barber is still free
         const existingBookings = await Booking.find({ barberId: candidate.id, date, status: 'upcoming' }).session(session);
@@ -590,8 +610,8 @@ const createBooking = async (req, res, next) => {
         return res.status(400).json({ success: false, message: 'Invalid barber selected' });
       }
 
-      const schedule = await lockScheduleForBooking({
-        barberId: assignedBarberId,
+      const schedule = await ensureScheduleForBooking({
+        barber,
         date,
         session,
       });
@@ -652,7 +672,13 @@ const createBooking = async (req, res, next) => {
     );
 
     await session.commitTransaction();
-    return res.status(201).json({ success: true, data: booking[0] });
+
+    const createdBooking = await Booking.findById(booking[0]._id)
+      .populate('shopId', 'name location.address location.coordinates')
+      .populate('barberId', 'name phone')
+      .lean();
+
+    return res.status(201).json({ success: true, data: createdBooking || booking[0] });
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction();
     if (isBookingWriteConflict(error)) {

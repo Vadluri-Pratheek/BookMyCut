@@ -11,6 +11,7 @@ const {
   validateScheduleWindow,
 } = require('../utils/barberScheduleDefaults');
 const { generateShopCode } = require('../utils/generateCode');
+const { normalizeLocationPoint } = require('../utils/locationPoint');
 const { sendEmail } = require('../utils/mailer');
 
 const signToken = (payload) =>
@@ -141,12 +142,17 @@ const resetBarberPasswordWithOtp = createPasswordResetHandler({
  */
 const registerCustomer = async (req, res, next) => {
   try {
-    const { name, email, phone, password, gender, dateOfBirth, location, city, state } = req.body;
+    const { name, email, phone, password, gender, dateOfBirth, homeLocation } = req.body;
 
     const existingCustomer = await Customer.findOne({ email: email.toLowerCase() }).lean();
 
     if (existingCustomer) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+
+    const normalizedHomeLocation = normalizeLocationPoint(homeLocation);
+    if (!normalizedHomeLocation) {
+      return res.status(400).json({ success: false, message: 'Customer location is required' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -158,9 +164,10 @@ const registerCustomer = async (req, res, next) => {
       passwordHash,
       gender,
       dateOfBirth,
-      location,
-      city,
-      state,
+      location: normalizedHomeLocation.address || '',
+      city: normalizedHomeLocation.city || '',
+      state: normalizedHomeLocation.state || '',
+      homeLocation: normalizedHomeLocation,
     });
 
     const token = signToken({
@@ -179,9 +186,12 @@ const registerCustomer = async (req, res, next) => {
           id: customer._id,
           name: customer.name,
           email: customer.email,
+          phone: customer.phone || '',
           gender: customer.gender,
+          address: customer.location || '',
           city: customer.city,
           state: customer.state,
+          homeLocation: customer.homeLocation || null,
         },
       },
     });
@@ -227,9 +237,12 @@ const loginCustomer = async (req, res, next) => {
           id: customer._id,
           name: customer.name,
           email: customer.email,
+          phone: customer.phone || '',
           gender: customer.gender,
+          address: customer.location || '',
           city: customer.city,
           state: customer.state,
+          homeLocation: customer.homeLocation || null,
         },
       },
     });

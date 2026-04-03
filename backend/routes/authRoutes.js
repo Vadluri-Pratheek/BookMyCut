@@ -27,6 +27,14 @@ router.post(
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('gender').isIn(['Male', 'Female', 'Other']).withMessage('Valid gender is required'),
+    body('homeLocation').custom((value) => {
+      const lat = Number(value?.lat);
+      const lng = Number(value?.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        throw new Error('Customer location is required');
+      }
+      return true;
+    }),
     validate,
   ],
   authController.registerCustomer

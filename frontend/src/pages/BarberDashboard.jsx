@@ -9,6 +9,7 @@ import {
 } from '../api/client';
 import { FaMapMarkerAlt, FaCheck, FaTimes } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import BrandLogo from '../components/BrandLogo';
 import MapPicker from '../components/MapPicker';
 import ServiceCheckbox from '../components/ServiceCheckbox';
 import { SERVICES } from '../data/services';
@@ -475,8 +476,18 @@ const BarberProfileDropdown = ({ open, onClose, user, onEditProfile, onEditShop 
 
 /* ─── Edit Profile Modal ────────────────────────────────────── */
 const EditProfileModal = ({ open, onClose, user, onSave }) => {
-  const [form, setForm] = useState({ name: user.name, phone: user.phone });
+  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '' });
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setForm({
+      name: user.name || '',
+      phone: user.phone || '',
+    });
+  }, [open, user.name, user.phone]);
+
   if (!open) return null;
 
   const handleSubmit = async (e) => {
@@ -1227,14 +1238,15 @@ const BarberDashboard = () => {
         <div style={{ maxWidth: 1280, margin: '0 auto', height: 62, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 
           {/* Left: Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <div style={{ background: `linear-gradient(135deg,${C.teal},${C.tealD})`, borderRadius: 9, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15 }}>✂</div>
-            <span style={{ fontWeight: 800, fontSize: 17, color: C.text, letterSpacing: '-0.02em' }}>BookMyCut</span>
-          </div>
+          <BrandLogo
+            size={34}
+            textStyle={{ fontWeight: 800, fontSize: 17, color: C.text, letterSpacing: '-0.02em' }}
+            containerStyle={{ flexShrink: 0 }}
+          />
 
           {/* Center: Shop name */}
           <div style={{ textAlign: 'center', flex: 1, padding: '0 1rem' }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>✂ {user.shopName || 'Your Shop'} <span style={{ fontSize: 11, background: C.bg, padding: '2px 6px', borderRadius: 4, color: C.teal, border: `1px solid ${C.border}` }}>{user.shopCode}</span></div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{user.shopName || 'Your Shop'} <span style={{ fontSize: 11, background: C.bg, padding: '2px 6px', borderRadius: 4, color: C.teal, border: `1px solid ${C.border}` }}>{user.shopCode}</span></div>
             <div style={{ fontSize: 11, color: C.text3, marginTop: 1 }}>{user.shopCity && user.shopState ? `${user.shopCity}, ${user.shopState}` : (user.shopAddress || 'Address not set')}</div>
           </div>
 

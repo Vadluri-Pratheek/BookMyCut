@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaArrowLeft, FaCheck, FaCrosshairs } from 'react-icons/fa';
 import { FaScissors, FaUser, FaChevronDown, FaXmark, FaCalendarDays } from 'react-icons/fa6';
+import BrandLogo from '../components/BrandLogo';
 import {
   apiRequest,
   getCustomerProfileCache,
@@ -506,7 +507,17 @@ const ProfileDropdown = ({ open, onClose, onEdit }) => {
 };
 
 /* ─── Dashboard Page ─────────────────────────────────────────── */
-const DashboardPage = ({ onBook, refreshKey = 0 }) => {
+const sortCustomerBookings = (bookings = []) => (
+  [...bookings].sort((a, b) => {
+    if (a.dateIso !== b.dateIso) {
+      return String(b.dateIso || '').localeCompare(String(a.dateIso || ''));
+    }
+
+    return Number(b.slotStartMinutes || 0) - Number(a.slotStartMinutes || 0);
+  })
+);
+
+const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
   const cachedCustomerProfile = getCustomerProfileCache();
   const [search, setSearch] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
@@ -605,7 +616,13 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
     try {
       const location = await getCurrentBrowserLocation();
       setCurrentLocation(location);
-      setEditForm((prev) => ({ ...prev, homeLocation: location }));
+      setEditForm((prev) => ({
+        ...prev,
+        homeLocation: location,
+        address: location.address || prev.address,
+        city: location.city || prev.city,
+        state: location.state || prev.state,
+      }));
     } catch (error) {
       console.error('Error getting location:', error);
       alert(error.message || 'Unable to get your current location. Please enable location services.');
@@ -681,6 +698,8 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
         }
 
         const gender = user.gender || jwtGender || 'Male';
+        const savedHomeLocation = normalizeLocation(user.homeLocation);
+        const searchLocation = savedHomeLocation || userLocation || null;
         const fallbackParams = new URLSearchParams({ gender });
         if (user.city) {
           fallbackParams.set('city', user.city);
@@ -690,10 +709,10 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
 
         let shopRows = [];
 
-        if (userLocation?.lng != null && userLocation?.lat != null) {
+        if (searchLocation?.lng != null && searchLocation?.lat != null) {
           const nearbyParams = new URLSearchParams({ gender });
-          nearbyParams.set('lng', String(userLocation.lng));
-          nearbyParams.set('lat', String(userLocation.lat));
+          nearbyParams.set('lng', String(searchLocation.lng));
+          nearbyParams.set('lat', String(searchLocation.lat));
           shopRows = await requestShops(nearbyParams);
 
           if (shopRows.length === 0 && (user.city || user.state)) {
@@ -725,18 +744,22 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
     return () => {
       cancelled = true;
     };
-  }, [user.gender, userLocation, user.city, user.state, userLoading]);
+  }, [user.gender, user.homeLocation, userLocation, user.city, user.state, userLoading]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     setIsSavingProfile(true);
     try {
+      const normalizedHomeLocation = normalizeLocation(editForm.homeLocation);
       const res = await apiRequest('/customers/profile', {
         method: 'PUT',
         auth: 'customer',
         body: {
           ...editForm,
-          homeLocation: normalizeLocation(editForm.homeLocation),
+          address: normalizedHomeLocation?.address || editForm.address || '',
+          city: normalizedHomeLocation?.city || editForm.city || '',
+          state: normalizedHomeLocation?.state || editForm.state || '',
+          homeLocation: normalizedHomeLocation,
         },
       });
       if (res.success && res.data) {
@@ -775,7 +798,7 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
     try {
       const res = await apiRequest('/bookings/my', { method: 'GET', auth: 'customer' });
       if (!bookingsMountedRef.current || !res?.data) return;
-      const mapped = res.data.map(mapApiBookingToCustomerUi);
+      const mapped = sortCustomerBookings(res.data.map(mapApiBookingToCustomerUi));
       setMyBookings(mapped);
     } catch (error) {
       console.error('Failed to load customer bookings:', error);
@@ -795,6 +818,16 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
       window.removeEventListener('bookmycut_bookings_refresh', loadMyBookings);
     };
   }, [loadMyBookings, refreshKey]);
+
+  useEffect(() => {
+    if (!recentBooking) return;
+
+    const mappedBooking = mapApiBookingToCustomerUi(recentBooking);
+    setMyBookings((prev) => sortCustomerBookings([
+      mappedBooking,
+      ...prev.filter((booking) => booking.apiBookingId !== mappedBooking.apiBookingId),
+    ]));
+  }, [recentBooking]);
 
   useEffect(() => {
     const tickInterval = setInterval(() => {
@@ -874,12 +907,16 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
       }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', height: 64, display: 'flex', alignItems: 'center', gap: '1rem' }}>
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <div style={{ background: `linear-gradient(135deg,${T.gold},#0f766e)`, borderRadius: 9, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <FaScissors size={15} />
-            </div>
-            <span style={{ fontFamily: "'Poppins',sans-serif", fontSize: 20, color: T.gold, letterSpacing: '-0.02em' }}>BookMyCut</span>
-          </div>
+          <BrandLogo
+            size={34}
+            textStyle={{
+              fontFamily: "'Poppins',sans-serif",
+              fontSize: 20,
+              color: T.gold,
+              letterSpacing: '-0.02em',
+            }}
+            containerStyle={{ flexShrink: 0 }}
+          />
 
           {/* Search */}
           <div style={{ flex: 1, position: 'relative', maxWidth: 440, margin: '0 auto' }}>
@@ -1265,7 +1302,13 @@ const DashboardPage = ({ onBook, refreshKey = 0 }) => {
                       <Popup>Your home address</Popup>
                     </Marker>
                   )}
-                  <ClickHandler onSelect={(location) => setEditForm((prev) => ({ ...prev, homeLocation: location }))} />
+                  <ClickHandler onSelect={(location) => setEditForm((prev) => ({
+                    ...prev,
+                    homeLocation: location,
+                    address: location?.address || prev.address,
+                    city: location?.city || prev.city,
+                    state: location?.state || prev.state,
+                  }))} />
                 </MapContainer>
               </div>
               <p style={{ color: T.text3, fontSize: 11, marginTop: '0.5rem' }}>
@@ -1292,9 +1335,9 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [selectedDate, setSelectedDate] = useState(DATES[1]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [homeLocation, setHomeLocation] = useState(
-    shop.isHomeService ? (normalizeLocation(shop.defaultCustomerLocation) || null) : null
-  );
+  const [createdBooking, setCreatedBooking] = useState(null);
+  const preferredCustomerLocation = normalizeLocation(shop.defaultCustomerLocation) || null;
+  const [homeLocation, setHomeLocation] = useState(null);
   const [isLoadingHomeLocation, setIsLoadingHomeLocation] = useState(false);
   const [shopBarbers, setShopBarbers] = useState([]);
   const [selectedBarber, setSelectedBarber] = useState(null);
@@ -1302,6 +1345,9 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingBarbers, setLoadingBarbers] = useState(false);
   const [effectiveSlotDuration, setEffectiveSlotDuration] = useState(30);
+  const [timelineOpen, setTimelineOpen] = useState(Number(shop.open || CUSTOMER_TIMELINE_OPEN));
+  const [timelineClose, setTimelineClose] = useState(Number(shop.close || CUSTOMER_TIMELINE_CLOSE));
+  const bookingRedirectTimeoutRef = useRef(null);
 
   const selectedServices = shop.services.filter((service) => selectedServiceIds.includes(service.id));
   const hasSelectedServices = selectedServices.length > 0;
@@ -1315,7 +1361,14 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
     0
   );
   const svcDur = totalServiceDuration || 30;
-  const activeCustomerLocation = homeLocation || normalizeLocation(shop.defaultCustomerLocation) || null;
+  const isHomeVisitBooking = shop.isHomeService && Boolean(homeLocation);
+  const activeCustomerLocation = isHomeVisitBooking ? homeLocation : null;
+  const defaultTimelineOpen = Number(shop.open || CUSTOMER_TIMELINE_OPEN);
+  const defaultTimelineClose = Number(shop.close || CUSTOMER_TIMELINE_CLOSE);
+  const resolveTimelineBound = (value, fallback) => {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) ? normalized : fallback;
+  };
 
   const toggleServiceSelection = (serviceId) => {
     setSelectedServiceIds((prev) => (
@@ -1353,30 +1406,34 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   useEffect(() => {
     let cancelled = false;
 
-    const fetchSlots = async () => {
+    const fetchSlots = async ({ silent = false } = {}) => {
       if (!hasSelectedServices || !selectedDate) {
         setAvailableSlots([]);
         setEffectiveSlotDuration(30);
+        setTimelineOpen(defaultTimelineOpen);
+        setTimelineClose(defaultTimelineClose);
         setSelectedSlot(null);
-        setLoadingSlots(false);
+        if (!silent) setLoadingSlots(false);
         return;
       }
 
       if (isTuesdayDateStr(selectedDate.str)) {
         setAvailableSlots([]);
         setEffectiveSlotDuration(svcDur);
+        setTimelineOpen(defaultTimelineOpen);
+        setTimelineClose(defaultTimelineClose);
         setSelectedSlot(null);
-        setLoadingSlots(false);
+        if (!silent) setLoadingSlots(false);
         return;
       }
 
-      setLoadingSlots(true);
+      if (!silent) setLoadingSlots(true);
       try {
         const params = new URLSearchParams({
           shopId: shop.id,
           date: selectedDate.str,
           serviceDuration: svcDur,
-          bookingType: shop.isHomeService ? 'homevisit' : 'inshop',
+          bookingType: isHomeVisitBooking ? 'homevisit' : 'inshop',
         });
         if (activeCustomerLocation?.lat != null && activeCustomerLocation?.lng != null) {
           params.set('customerLat', String(activeCustomerLocation.lat));
@@ -1386,11 +1443,16 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
           method: 'GET',
           auth: 'none',
         });
-        if (!cancelled && res?.data?.slots) {
-          setAvailableSlots(res.data.slots);
+        if (!cancelled && res?.data) {
+          const slots = Array.isArray(res.data.slots) ? res.data.slots : [];
+          const nextOpen = resolveTimelineBound(res.data.openTime, defaultTimelineOpen);
+          const nextClose = resolveTimelineBound(res.data.closeTime, defaultTimelineClose);
+          setAvailableSlots(slots);
           setEffectiveSlotDuration(res.data.effectiveDurationMinutes || svcDur);
+          setTimelineOpen(nextOpen);
+          setTimelineClose(nextClose > nextOpen ? nextClose : defaultTimelineClose);
           setSelectedSlot((prev) => (
-            prev !== null && res.data.slots.some((slot) => slot.color === 'GREEN' && prev >= slot.start && prev < slot.end)
+            prev !== null && slots.some((slot) => slot.color === 'GREEN' && prev >= slot.start && prev < slot.end)
               ? prev
               : null
           ));
@@ -1400,16 +1462,55 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
         if (!cancelled) {
           setAvailableSlots([]);
           setEffectiveSlotDuration(svcDur);
+          setTimelineOpen(defaultTimelineOpen);
+          setTimelineClose(defaultTimelineClose);
           setSelectedSlot(null);
         }
       } finally {
-        if (!cancelled) setLoadingSlots(false);
+        if (!cancelled && !silent) setLoadingSlots(false);
       }
     };
 
-    fetchSlots();
-    return () => { cancelled = true; };
-  }, [shop.id, hasSelectedServices, selectedDate, svcDur, shop.isHomeService, activeCustomerLocation?.lat, activeCustomerLocation?.lng]);
+    const handleWindowFocus = () => {
+      void fetchSlots({ silent: true });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchSlots({ silent: true });
+      }
+    };
+
+    void fetchSlots();
+    const refreshInterval = window.setInterval(() => {
+      void fetchSlots({ silent: true });
+    }, 15000);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(refreshInterval);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [shop.id, hasSelectedServices, selectedDate, svcDur, isHomeVisitBooking, activeCustomerLocation?.lat, activeCustomerLocation?.lng, defaultTimelineOpen, defaultTimelineClose]);
+
+  useEffect(() => () => {
+    if (bookingRedirectTimeoutRef.current) {
+      window.clearTimeout(bookingRedirectTimeoutRef.current);
+    }
+  }, []);
+
+  const completeBookingSuccess = (booking = createdBooking) => {
+    if (bookingRedirectTimeoutRef.current) {
+      window.clearTimeout(bookingRedirectTimeoutRef.current);
+      bookingRedirectTimeoutRef.current = null;
+    }
+
+    setConfirmed(false);
+    onBookingSuccess(booking || null);
+  };
 
   const handleUseCurrentHomeLocation = async () => {
     setIsLoadingHomeLocation(true);
@@ -1426,7 +1527,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
 
   const handleConfirmBooking = async () => {
     if (!hasSelectedServices || !selectedDate || selectedSlot === null) return;
-    if (shop.isHomeService && !activeCustomerLocation) return;
+    if (isHomeVisitBooking && !activeCustomerLocation) return;
 
     if (isTuesdayDateStr(selectedDate.str)) {
       alert('This shop is closed on Tuesday.');
@@ -1452,7 +1553,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
         })),
         date: selectedDate.str,
         slotStartMinutes: selectedSlot,
-        bookingType: shop.isHomeService ? 'homevisit' : 'inshop',
+        bookingType: isHomeVisitBooking ? 'homevisit' : 'inshop',
       };
 
       if (activeCustomerLocation) {
@@ -1466,10 +1567,10 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
       });
 
       if (res.success) {
+        setCreatedBooking(res.data || null);
         setConfirmed(true);
-        // Redirect after 3 seconds
-        setTimeout(() => {
-          onBookingSuccess();
+        bookingRedirectTimeoutRef.current = window.setTimeout(() => {
+          completeBookingSuccess(res.data || null);
         }, 3000);
       }
     } catch (err) {
@@ -1590,8 +1691,8 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
                     onSlotSelect={setSelectedSlot}
                     selectedSlot={selectedSlot}
                     duration={effectiveSlotDuration}
-                    openTime={CUSTOMER_TIMELINE_OPEN}
-                    closeTime={CUSTOMER_TIMELINE_CLOSE}
+                    openTime={timelineOpen}
+                    closeTime={timelineClose}
                     date={selectedDate.str}
                   />
                 </div>
@@ -1637,7 +1738,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
                     </div>
                     <div style={{ height: 200, width: '100%', borderRadius: 8, overflow: 'hidden', border: `1px solid ${T.br}`, position: 'relative' }}>
                       <MapContainer
-                        center={homeLocation ? [homeLocation.lat, homeLocation.lng] : [12.9716, 77.5946]}
+                        center={(homeLocation || preferredCustomerLocation) ? [Number((homeLocation || preferredCustomerLocation).lat), Number((homeLocation || preferredCustomerLocation).lng)] : [12.9716, 77.5946]}
                         zoom={13}
                         style={{ height: '100%', width: '100%' }}
                       >
@@ -1655,12 +1756,12 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
 
                 <button
                   onClick={handleConfirmBooking}
-                  disabled={selectedSlot === null || isTuesdayDateStr(selectedDate.str) || (shop.isHomeService && !activeCustomerLocation)}
+                  disabled={selectedSlot === null || isTuesdayDateStr(selectedDate.str) || (isHomeVisitBooking && !activeCustomerLocation)}
                   style={{
                     width: '100%', padding: '0.8rem', borderRadius: 8,
                     background: `linear-gradient(135deg,${T.gold},#0f766e)`,
                     color: '#fff', fontWeight: 700, fontSize: 14, border: 'none',
-                    cursor: selectedSlot !== null && !isTuesdayDateStr(selectedDate.str) && (!shop.isHomeService || activeCustomerLocation) ? 'pointer' : 'not-allowed',
+                    cursor: selectedSlot !== null && !isTuesdayDateStr(selectedDate.str) && (!isHomeVisitBooking || activeCustomerLocation) ? 'pointer' : 'not-allowed',
                     fontFamily: "'Poppins',sans-serif", transition: 'opacity 0.15s'
                   }}
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
@@ -1719,8 +1820,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
             </div>
             <button
               onClick={() => {
-                setConfirmed(false);
-                onBookingSuccess();
+                completeBookingSuccess();
               }}
               style={{
                 width: '100%', padding: '0.6rem', background: T.s2, color: T.text2, border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: "'Poppins',sans-serif"
@@ -1740,6 +1840,7 @@ const CustomerDashboard = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedShop, setSelectedShop] = useState(null);
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
+  const [recentBooking, setRecentBooking] = useState(null);
 
   const handleBook = (shop) => {
     setSelectedShop(shop);
@@ -1751,7 +1852,10 @@ const CustomerDashboard = () => {
     setSelectedShop(null);
   };
 
-  const handleBookingSuccess = () => {
+  const handleBookingSuccess = (booking = null) => {
+    if (booking) {
+      setRecentBooking(booking);
+    }
     setDashboardRefreshKey((prev) => prev + 1);
     setCurrentPage('dashboard');
     setSelectedShop(null);
@@ -1761,7 +1865,7 @@ const CustomerDashboard = () => {
     return <ShopBookingPage shop={selectedShop} onBack={handleBack} onBookingSuccess={handleBookingSuccess} />;
   }
 
-  return <DashboardPage onBook={handleBook} refreshKey={dashboardRefreshKey} />;
+  return <DashboardPage onBook={handleBook} refreshKey={dashboardRefreshKey} recentBooking={recentBooking} />;
 };
 
 export default CustomerDashboard;

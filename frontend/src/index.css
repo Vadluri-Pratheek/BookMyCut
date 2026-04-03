@@ -95,6 +95,222 @@ select {
   border: 1px solid var(--border);
 }
 
+.role-selection-shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.role-selection-content {
+  position: relative;
+  z-index: 2;
+  transition:
+    filter 560ms cubic-bezier(.22, 1, .36, 1),
+    opacity 560ms cubic-bezier(.22, 1, .36, 1),
+    transform 560ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.role-selection-content--intro {
+  filter: blur(10px);
+  opacity: 0.42;
+  transform: scale(0.985);
+}
+
+.role-selection-content--ready {
+  filter: none;
+  opacity: 1;
+  transform: none;
+}
+
+.role-selection-logo-target {
+  display: inline-flex;
+  opacity: 0;
+  transform: translateY(10px) scale(0.98);
+  transition:
+    opacity 360ms cubic-bezier(.22, 1, .36, 1) 120ms,
+    transform 420ms cubic-bezier(.22, 1, .36, 1) 120ms;
+}
+
+.role-selection-logo-target--ready {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.role-intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: auto;
+}
+
+.role-intro-overlay__wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  backdrop-filter: blur(14px);
+  background:
+    radial-gradient(circle at 26% 28%, rgba(13, 148, 136, 0.22), transparent 35%),
+    radial-gradient(circle at 74% 70%, rgba(249, 115, 22, 0.22), transparent 35%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 248, 241, 0.84));
+  transition: opacity 700ms ease;
+}
+
+.role-intro-overlay__glow {
+  position: absolute;
+  width: 42vmax;
+  height: 42vmax;
+  border-radius: 999px;
+  filter: blur(40px);
+  opacity: 0;
+  transform: scale(0.82);
+  transition:
+    opacity 900ms ease,
+    transform 1200ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.role-intro-overlay__glow--teal {
+  top: -8vmax;
+  left: -6vmax;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.36), transparent 68%);
+}
+
+.role-intro-overlay__glow--orange {
+  right: -8vmax;
+  bottom: -10vmax;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.34), transparent 68%);
+}
+
+.role-intro-overlay--visible .role-intro-overlay__wash,
+.role-intro-overlay--reveal .role-intro-overlay__wash,
+.role-intro-overlay--travel .role-intro-overlay__wash {
+  opacity: 1;
+}
+
+.role-intro-overlay--visible .role-intro-overlay__glow,
+.role-intro-overlay--reveal .role-intro-overlay__glow,
+.role-intro-overlay--travel .role-intro-overlay__glow {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.role-intro-overlay--travel .role-intro-overlay__wash {
+  opacity: 0;
+  transition-duration: 900ms;
+}
+
+.role-intro-overlay--travel .role-intro-overlay__glow {
+  opacity: 0.18;
+}
+
+.role-intro-brand {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  opacity: 0;
+  transform: translate(-50%, -50%) translate3d(0, 0, 0) scale(1);
+  transform-origin: center center;
+  will-change: transform, opacity;
+  transition:
+    transform 1050ms cubic-bezier(.22, 1, .36, 1),
+    opacity 520ms ease;
+}
+
+.role-intro-brand--visible,
+.role-intro-brand--reveal,
+.role-intro-brand--travel {
+  opacity: 1;
+}
+
+.role-intro-brand--travel {
+  transform:
+    translate(-50%, -50%)
+    translate3d(var(--role-intro-x, 0px), var(--role-intro-y, 0px), 0)
+    scale(var(--role-intro-scale, 1));
+}
+
+.role-intro-brand__halo {
+  position: absolute;
+  inset: -20%;
+  border-radius: 999px;
+  opacity: 0;
+  transform: scale(0.9);
+  background:
+    radial-gradient(circle at 24% 30%, rgba(13, 148, 136, 0.42), transparent 42%),
+    radial-gradient(circle at 74% 72%, rgba(249, 115, 22, 0.4), transparent 42%);
+  filter: blur(30px);
+  transition:
+    opacity 900ms ease,
+    transform 1200ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.role-intro-brand--visible .role-intro-brand__halo,
+.role-intro-brand--reveal .role-intro-brand__halo,
+.role-intro-brand--travel .role-intro-brand__halo {
+  opacity: 0.92;
+  transform: scale(1);
+}
+
+.role-intro-brand__mark {
+  opacity: 0;
+  transform: translateY(12px) scale(0.82) rotate(-7deg);
+  transition:
+    transform 760ms cubic-bezier(.22, 1, .36, 1),
+    opacity 620ms ease;
+}
+
+.role-intro-brand__wordmark {
+  opacity: 0;
+  transform: translateX(-18px) translateY(4px);
+  filter: blur(10px);
+  transition:
+    transform 860ms cubic-bezier(.22, 1, .36, 1),
+    opacity 700ms ease,
+    filter 820ms ease;
+}
+
+.role-intro-overlay--visible .role-intro-brand__mark,
+.role-intro-overlay--reveal .role-intro-brand__mark,
+.role-intro-overlay--travel .role-intro-brand__mark {
+  opacity: 1;
+  transform: none;
+}
+
+.role-intro-overlay--reveal .role-intro-brand__wordmark,
+.role-intro-overlay--travel .role-intro-brand__wordmark {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+@media (max-width: 640px) {
+  .role-selection-content--intro {
+    filter: blur(8px);
+    opacity: 0.48;
+  }
+
+  .role-intro-overlay__glow {
+    width: 54vmax;
+    height: 54vmax;
+  }
+
+  .role-intro-brand__halo {
+    inset: -16%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .role-selection-content,
+  .role-selection-logo-target,
+  .role-intro-overlay__wash,
+  .role-intro-overlay__glow,
+  .role-intro-brand,
+  .role-intro-brand__halo,
+  .role-intro-brand__mark,
+  .role-intro-brand__wordmark {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;

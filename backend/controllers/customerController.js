@@ -8,6 +8,8 @@ const { normalizeLocationPoint } = require('../utils/locationPoint');
 const updateProfile = async (req, res, next) => {
   try {
     const { name, phone, email, gender, dob, city, state, address, homeLocation } = req.body;
+    const normalizedHomeLocation =
+      homeLocation !== undefined ? normalizeLocationPoint(homeLocation) : undefined;
 
     const updates = {};
     if (name) updates.name = name.trim();
@@ -15,13 +17,16 @@ const updateProfile = async (req, res, next) => {
     if (email) updates.email = email.trim().toLowerCase();
     if (gender) updates.gender = gender;
     if (dob) updates.dateOfBirth = new Date(dob);
-    if (city) updates.city = city.trim();
-    if (state) updates.state = state.trim();
+    if (city !== undefined) updates.city = city != null ? String(city).trim() : '';
+    else if (normalizedHomeLocation?.city) updates.city = normalizedHomeLocation.city;
+    if (state !== undefined) updates.state = state != null ? String(state).trim() : '';
+    else if (normalizedHomeLocation?.state) updates.state = normalizedHomeLocation.state;
     // Map the incoming 'address' from the frontend to the DB field 'location'
     if (address !== undefined) updates.location = address != null ? String(address).trim() : '';
+    else if (normalizedHomeLocation?.address) updates.location = normalizedHomeLocation.address;
     // Handle homeLocation for map-based address selection
     if (homeLocation !== undefined) {
-      updates.homeLocation = normalizeLocationPoint(homeLocation);
+      updates.homeLocation = normalizedHomeLocation;
     }
 
     // Check if email is being updated and if it's already taken by another customer

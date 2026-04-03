@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUserPlus, FaArrowLeft, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
 import {
-  FaScissors, FaStore, FaLink,
+  FaStore, FaLink,
   FaCircleCheck, FaUser, FaEye, FaEyeSlash
 } from 'react-icons/fa6';
+import BrandLogo from '../components/BrandLogo';
 import InputField from '../components/InputField';
 import PasswordInput from '../components/PasswordInput';
 import ForgotPasswordForm from '../components/ForgotPasswordForm';
@@ -27,6 +28,13 @@ const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRe = /^[6-9]\d{9}$/;
 const DEFAULT_GENERAL_WORK_START = '09:00';
 const DEFAULT_GENERAL_WORK_END = '21:00';
+const BARBER_TERMS = [
+  'Shop and service changes reflect instantly, but already booked next-day services must still be honored.',
+  'Do not block leave or pause slots that are already occupied by confirmed customer bookings.',
+  'Mark leave, breaks, or unavailable time early in the morning before customers start booking for the day.',
+  'Keep working hours, services, and home-service availability accurate at all times.',
+  'Repeated no-shows, false availability, cancellations, or misconduct may lead to account restrictions.',
+];
 
 const timeStrToMins = (value) => {
   if (!value) return 0;
@@ -576,8 +584,27 @@ const OwnerSignupForm = ({ onBack }) => {
       <label className="check-label">
         <input type="checkbox" checked={form.terms}
           onChange={() => setForm((f) => ({ ...f, terms: !f.terms }))} />
-        I agree to the <a href="#">Terms &amp; Conditions</a>
+        I agree to the barber Terms &amp; Conditions below
       </label>
+      <div
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          background: 'var(--bg)',
+          padding: '0.9rem 1rem',
+          fontSize: '0.8rem',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+          Barber Terms &amp; Conditions
+        </div>
+        <ul style={{ margin: 0, paddingLeft: '1rem', display: 'grid', gap: '0.35rem' }}>
+          {BARBER_TERMS.map((term) => (
+            <li key={term}>{term}</li>
+          ))}
+        </ul>
+      </div>
       {errors.terms && <span className="error-msg">⚠ {errors.terms}</span>}
       {errors.api && <span className="error-msg">⚠ {errors.api}</span>}
 
@@ -768,8 +795,27 @@ const JoinSignupForm = ({ onBack }) => {
       <label className="check-label">
         <input type="checkbox" checked={form.terms}
           onChange={() => setForm((f) => ({ ...f, terms: !f.terms }))} />
-        I agree to the <a href="#">Terms &amp; Conditions</a>
+        I agree to the barber Terms &amp; Conditions below
       </label>
+      <div
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          background: 'var(--bg)',
+          padding: '0.9rem 1rem',
+          fontSize: '0.8rem',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+          Barber Terms &amp; Conditions
+        </div>
+        <ul style={{ margin: 0, paddingLeft: '1rem', display: 'grid', gap: '0.35rem' }}>
+          {BARBER_TERMS.map((term) => (
+            <li key={term}>{term}</li>
+          ))}
+        </ul>
+      </div>
       {errors.terms && <span className="error-msg">⚠ {errors.terms}</span>}
       {errors.api && <span className="error-msg">⚠ {errors.api}</span>}
 
@@ -814,24 +860,13 @@ const BarberAuthPage = () => {
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{
-              background: 'linear-gradient(135deg,var(--teal),var(--teal-dark))',
-              borderRadius: '10px', width: '34px', height: '34px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: '1rem',
-            }}>
-              <FaScissors />
-            </span>
-            <span style={{
-              fontSize: '1.2rem', fontWeight: 800,
-              background: 'linear-gradient(135deg,var(--teal),var(--teal-dark))',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.02em',
-            }}>
-              BookMyCut
-            </span>
-          </div>
+          <BrandLogo
+            size={36}
+            textStyle={{
+              fontSize: '1.08rem',
+              letterSpacing: '-0.045em',
+            }}
+          />
           <RoleBadge role="barber" />
         </div>
 

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaScissors } from 'react-icons/fa6';
+import { FaArrowLeft } from 'react-icons/fa6';
+import BrandLogo from '../components/BrandLogo';
 import InputField from '../components/InputField';
 import PasswordInput from '../components/PasswordInput';
 import ForgotPasswordForm from '../components/ForgotPasswordForm';
+import MapPicker from '../components/MapPicker';
 import RoleBadge from '../components/RoleBadge';
 import { apiRequest, setCustomerProfileCache, setCustomerToken } from '../api/client';
 import '../App.css';
@@ -11,6 +13,14 @@ import '../App.css';
 /* ── Validation helpers ──────────────────────────────────── */
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRe = /^[6-9]\d{9}$/;
+const CUSTOMER_TERMS = [
+  'Provide correct contact and location details while booking.',
+  'Bookings depend on live slot availability and barber assignment.',
+  'If you are late beyond the allowed buffer time, your booking may be cancelled.',
+  'For home service, the selected location must stay unchanged until the service is completed.',
+  'If you are unreachable, absent, or the location is inaccurate, the booking may be cancelled.',
+  'Repeated misuse, fake bookings, or no-shows may lead to account restrictions.',
+];
 
 const persistCustomerSession = (payload = {}) => {
   const { token, customer } = payload;
@@ -131,7 +141,7 @@ const SignupForm = ({ onSwitch, onLogin }) => {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     password: '', confirmPassword: '', gender: '',
-    city: '', state: '',
+    homeLocation: null,
     terms: false,
   });
   const [errors, setErrors] = useState({});
@@ -154,8 +164,7 @@ const SignupForm = ({ onSwitch, onLogin }) => {
     if (!form.confirmPassword) errs.confirmPassword = 'Please confirm your password';
     else if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
     if (!form.gender) errs.gender = 'Please select a gender';
-    if (!form.city.trim()) errs.city = 'City is required';
-    if (!form.state.trim()) errs.state = 'State is required';
+    if (!form.homeLocation) errs.homeLocation = 'Please select your current location on the map';
     if (!form.terms) errs.terms = 'You must agree to Terms & Conditions';
     return errs;
   };
@@ -177,8 +186,7 @@ const SignupForm = ({ onSwitch, onLogin }) => {
           password: form.password,
           phone: form.phone.trim(),
           gender: genderApi,
-          city: form.city.trim(),
-          state: form.state.trim(),
+          homeLocation: form.homeLocation,
         },
       });
       persistCustomerSession(res.data);
@@ -217,15 +225,28 @@ const SignupForm = ({ onSwitch, onLogin }) => {
         error={errors.confirmPassword} required autoComplete="new-password"
       />
 
-      <div style={{ display: 'flex', gap: '1rem' }}>
-        <InputField
-          label="City" id="cust-city" placeholder="e.g. Mumbai"
-          value={form.city} onChange={set('city')} error={errors.city} required
+      <div className="input-group">
+        <label>Current Location <span style={{ color: 'var(--text-error)' }}>*</span></label>
+        <MapPicker
+          selected={form.homeLocation}
+          onLocationSelect={(location) => {
+            setForm((f) => ({ ...f, homeLocation: location }));
+            setErrors((prev) => {
+              if (!prev.homeLocation) {
+                return prev;
+              }
+              const next = { ...prev };
+              delete next.homeLocation;
+              return next;
+            });
+          }}
         />
-        <InputField
-          label="State" id="cust-state" placeholder="e.g. Maharashtra"
-          value={form.state} onChange={set('state')} error={errors.state} required
-        />
+        {form.homeLocation && (
+          <p className="helper-text" style={{ marginTop: '-0.15rem' }}>
+            Saved location: {form.homeLocation.address}
+          </p>
+        )}
+        {errors.homeLocation && <span className="error-msg">⚠ {errors.homeLocation}</span>}
       </div>
 
       {/* Gender */}
@@ -249,8 +270,27 @@ const SignupForm = ({ onSwitch, onLogin }) => {
       {/* Terms */}
       <label className="check-label">
         <input type="checkbox" checked={form.terms} onChange={setTerms} />
-        I agree to the <a href="#">Terms &amp; Conditions</a>
+        I agree to the customer Terms &amp; Conditions below
       </label>
+      <div
+        style={{
+          border: '1px solid var(--border)',
+          borderRadius: '12px',
+          background: 'var(--bg)',
+          padding: '0.9rem 1rem',
+          fontSize: '0.8rem',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: '0.45rem' }}>
+          Customer Terms &amp; Conditions
+        </div>
+        <ul style={{ margin: 0, paddingLeft: '1rem', display: 'grid', gap: '0.35rem' }}>
+          {CUSTOMER_TERMS.map((term) => (
+            <li key={term}>{term}</li>
+          ))}
+        </ul>
+      </div>
       {errors.terms && <span className="error-msg">⚠ {errors.terms}</span>}
       {errors.api && <span className="error-msg">⚠ {errors.api}</span>}
 
@@ -283,24 +323,13 @@ const CustomerAuthPage = () => {
       <div className="card" style={{ width: '100%', maxWidth: '480px', padding: '2rem' }}>
         {/* Logo row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{
-              background: 'linear-gradient(135deg,#0d9488,#0f766e)',
-              borderRadius: '10px', width: '34px', height: '34px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontSize: '1rem',
-            }}>
-              <FaScissors />
-            </span>
-            <span style={{
-              fontSize: '1.2rem', fontWeight: 800,
-              background: 'linear-gradient(135deg,#0d9488,#0f766e)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              letterSpacing: '-0.02em',
-            }}>
-              BookMyCut
-            </span>
-          </div>
+          <BrandLogo
+            size={36}
+            textStyle={{
+              fontSize: '1.08rem',
+              letterSpacing: '-0.045em',
+            }}
+          />
           <RoleBadge role="customer" />
         </div>
 
