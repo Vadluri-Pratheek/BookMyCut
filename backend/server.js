@@ -27,6 +27,18 @@ app.get('/', (req, res) => {
   });
 });
 
+// Debug endpoint to check database connection
+app.get('/api/debug/status', (req, res) => {
+  const mongoose = require('mongoose');
+  res.status(200).json({
+    success: true,
+    message: 'Server is running',
+    mongoDBConnected: mongoose.connection.readyState === 1,
+    mongoDBState: mongoose.connection.readyState,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/barbers', barberRoutes);
