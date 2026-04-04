@@ -52,6 +52,8 @@ const C = {
   bg: '#eef2f7', white: '#ffffff', border: '#e4ebf3',
   text: '#0f172a', text2: '#66758d', text3: '#9eabc0',
 };
+const BOOKING_SYNC_STORAGE_KEY = 'bookmycut_booking_sync';
+const BOOKING_SYNC_EVENT_NAME = 'bookmycut_booking_sync';
 
 /* ─── Timeline constants ─────────────────────────────────────── */
 const OPEN = 7 * 60;
@@ -76,6 +78,8 @@ const timeStrToMins = (t) => {
   return h * 60 + m;
 };
 const minsToTimeStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
+const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
 
 const normalizeScheduleBreaks = (breaks = []) =>
   Array.isArray(breaks)
@@ -138,6 +142,16 @@ const getVisibleWorkWindow = (schedule) => {
     start: visibleStart,
     end: visibleEnd,
   };
+};
+
+const emitBookingSync = (payload = {}) => {
+  const detail = { ...payload, timestamp: Date.now() };
+  try {
+    localStorage.setItem(BOOKING_SYNC_STORAGE_KEY, JSON.stringify(detail));
+  } catch (_) {
+    /* ignore sync persistence issues */
+  }
+  window.dispatchEvent(new CustomEvent(BOOKING_SYNC_EVENT_NAME, { detail }));
 };
 
 /* ─── Date utilities ─────────────────────────────────────────── */
@@ -476,7 +490,7 @@ const BarberProfileDropdown = ({ open, onClose, user, onEditProfile, onEditShop 
 
 /* ─── Edit Profile Modal ────────────────────────────────────── */
 const EditProfileModal = ({ open, onClose, user, onSave }) => {
-  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '' });
+  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '', upiId: user.upiId || '' });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -485,19 +499,27 @@ const EditProfileModal = ({ open, onClose, user, onSave }) => {
     setForm({
       name: user.name || '',
       phone: user.phone || '',
+      upiId: user.upiId || '',
     });
-  }, [open, user.name, user.phone]);
+  }, [open, user.name, user.phone, user.upiId]);
 
   if (!open) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.upiId && !upiRe.test(normalizeUpiId(form.upiId))) {
+      alert('Enter a valid UPI ID');
+      return;
+    }
     setBusy(true);
     try {
       const res = await apiRequest('/barbers/profile', {
         method: 'PUT',
         auth: 'barber',
-        body: form,
+        body: {
+          ...form,
+          upiId: normalizeUpiId(form.upiId),
+        },
       });
       onSave(res.data);
       onClose();
@@ -520,6 +542,10 @@ const EditProfileModal = ({ open, onClose, user, onSave }) => {
           <div>
             <Label>Phone Number</Label>
             <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={inputSt} required />
+          </div>
+          <div>
+            <Label>UPI ID</Label>
+            <input value={form.upiId} onChange={e => setForm({ ...form, upiId: e.target.value })} style={inputSt} placeholder="yourname@bank" />
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: '0.5rem' }}>
             <button type="button" onClick={onClose} style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Cancel</button>
@@ -903,6 +929,7 @@ const BarberDashboard = () => {
     shopLat: cachedBarberProfile?.shopLat ?? null,
     shopLng: cachedBarberProfile?.shopLng ?? null,
     shopCode: cachedBarberProfile?.shopCode || '',
+    upiId: cachedBarberProfile?.upiId || '',
     openTime: cachedBarberProfile?.openTime ?? 540,
     closeTime: cachedBarberProfile?.closeTime ?? 1260,
     generalWorkStart: cachedBarberProfile?.generalWorkStart ?? DEFAULT_BARBER_WORK_START,
@@ -1045,14 +1072,44 @@ const BarberDashboard = () => {
   }, [applyLoadedSchedule, loadDateSchedule, selectedDate.str, user.barberId, user.id]);
 
   useEffect(() => {
+    const handleIncomingBookingSync = (payload = {}) => {
+      if (payload?.type === 'created' && payload?.dateIso) {
+        const matchingDate = DATE_PILLS.find((date) => date.str === payload.dateIso);
+        if (matchingDate) {
+          setSelectedDate((prev) => (prev.str === matchingDate.str ? prev : matchingDate));
+        }
+      }
+      loadBookings();
+    };
+
+    const handleBookingSyncEvent = (event) => {
+      handleIncomingBookingSync(event.detail);
+    };
+
+    const handleBookingSyncStorage = (event) => {
+      if (event.key !== BOOKING_SYNC_STORAGE_KEY || !event.newValue) {
+        return;
+      }
+
+      try {
+        handleIncomingBookingSync(JSON.parse(event.newValue));
+      } catch (_) {
+        loadBookings();
+      }
+    };
+
     loadBookings();
     window.addEventListener('bmc_bookings_update', loadBookings);
+    window.addEventListener(BOOKING_SYNC_EVENT_NAME, handleBookingSyncEvent);
+    window.addEventListener('storage', handleBookingSyncStorage);
     const mapHandler = (e) => setViewingLocation(e.detail);
     window.addEventListener('open_map', mapHandler);
     const refreshInterval = setInterval(loadBookings, 10000);
 
     return () => {
       window.removeEventListener('bmc_bookings_update', loadBookings);
+      window.removeEventListener(BOOKING_SYNC_EVENT_NAME, handleBookingSyncEvent);
+      window.removeEventListener('storage', handleBookingSyncStorage);
       window.removeEventListener('open_map', mapHandler);
       clearInterval(refreshInterval);
     };
@@ -1208,6 +1265,7 @@ const BarberDashboard = () => {
       });
       setSlotTimer(60);
       setTimerExpired(false);
+      emitBookingSync({ type: 'cancelled', bookingId: currentBooking.apiBookingId, dateIso: TODAY });
       loadBookings();
       setToast({ message: '✅ Booking cancelled', type: 'success' });
     } catch (err) {
@@ -1226,7 +1284,10 @@ const BarberDashboard = () => {
   const upcoming = selectedDate.str === TODAY
     ? rawUpcoming.filter(b => b.startMins > nowMins)
     : rawUpcoming;
-  const upcomingCount = upcoming.length;
+  const visibleCustomerList = selectedDate.str === TODAY && upcoming.length === 0 && currentBooking
+    ? [currentBooking]
+    : upcoming;
+  const upcomingCount = visibleCustomerList.length;
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: "'Poppins',sans-serif" }}>
@@ -1500,6 +1561,7 @@ const BarberDashboard = () => {
                             auth: 'barber',
                           });
                           setCheckedIn(true);
+                          emitBookingSync({ type: 'completed', bookingId: currentBooking.apiBookingId, dateIso: TODAY });
                           // Trigger reload of bookings to update stats
                           window.dispatchEvent(new Event('bmc_bookings_update'));
                           setToast({ message: '✅ Check-in successful', type: 'success' });
@@ -1563,13 +1625,13 @@ const BarberDashboard = () => {
               <h3 style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: '0.7rem', display: 'flex', alignItems: 'center', gap: 7 }}>
                 👥 Upcoming Customers
                 <span style={{ background: `${C.teal}18`, color: C.teal, fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '1px 8px', border: `1px solid ${C.teal}33` }}>
-                  {upcoming.length}
+                  {upcomingCount}
                 </span>
               </h3>
               <div className="bdb-scroll">
-                {upcoming.length === 0
+                {visibleCustomerList.length === 0
                   ? <div style={{ textAlign: 'center', padding: '2rem', color: C.text3, fontSize: 12 }}>No bookings for this date</div>
-                  : upcoming.map(b => <BookingCard key={b.id} booking={b} />)
+                  : visibleCustomerList.map(b => <BookingCard key={b.id} booking={b} />)
                 }
               </div>
             </div>

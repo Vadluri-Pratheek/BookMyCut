@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const barberController = require('../controllers/barberController');
 const { protectBarber } = require('../middleware/authMiddleware');
 const { requireOwner } = require('../middleware/roleMiddleware');
+const { isValidUpiId } = require('../utils/upi');
 
 const router = express.Router();
 
@@ -30,6 +31,15 @@ router.put(
   [
     body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
     body('phone').optional().trim().notEmpty().withMessage('Phone cannot be empty'),
+    body('upiId').optional({ values: 'undefined' }).custom((value) => {
+      if (String(value).trim() === '') {
+        return true;
+      }
+      if (!isValidUpiId(value)) {
+        throw new Error('Enter a valid UPI ID');
+      }
+      return true;
+    }),
     validate,
   ],
   barberController.updateBarberProfile

@@ -13,6 +13,7 @@ const {
 const { generateShopCode } = require('../utils/generateCode');
 const { normalizeLocationPoint } = require('../utils/locationPoint');
 const { sendEmail } = require('../utils/mailer');
+const { normalizeUpiId } = require('../utils/upi');
 
 const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -262,6 +263,7 @@ const registerBarberOwner = async (req, res, next) => {
       name,
       email,
       phone,
+      upiId,
       password,
       shopName,
       shopAddress,
@@ -304,6 +306,7 @@ const registerBarberOwner = async (req, res, next) => {
       name,
       email,
       phone,
+      upiId: normalizeUpiId(upiId),
       passwordHash,
       role: 'owner',
       shopId: null,
@@ -343,12 +346,12 @@ const registerBarberOwner = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      data: {
-        token,
-        shopCode,
-        barber: { id: barber._id, name: barber.name, role: barber.role },
-        shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
-      },
+        data: {
+          token,
+          shopCode,
+          barber: { id: barber._id, name: barber.name, role: barber.role, upiId: barber.upiId || '' },
+          shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
+        },
     });
   } catch (error) {
     next(error);
@@ -366,6 +369,7 @@ const registerBarberStaff = async (req, res, next) => {
       name,
       email,
       phone,
+      upiId,
       password,
       shopCode,
       generalWorkStart,
@@ -408,6 +412,7 @@ const registerBarberStaff = async (req, res, next) => {
       name,
       email,
       phone,
+      upiId: normalizeUpiId(upiId),
       passwordHash,
       role: 'staff',
       shopId: shop._id,
@@ -431,11 +436,11 @@ const registerBarberStaff = async (req, res, next) => {
 
     return res.status(201).json({
       success: true,
-      data: {
-        token,
-        barber: { id: barber._id, name: barber.name, role: barber.role },
-        shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
-      },
+        data: {
+          token,
+          barber: { id: barber._id, name: barber.name, role: barber.role, upiId: barber.upiId || '' },
+          shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
+        },
     });
   } catch (error) {
     next(error);
@@ -488,6 +493,7 @@ const loginBarber = async (req, res, next) => {
               id: barber._id,
               name: barber.name,
               email: barber.email,
+              upiId: barber.upiId || '',
               role: barber.role,
               shopId: barber.shopId ? barber.shopId._id : null,
               shopName: barber.shopId ? barber.shopId.name : '',
@@ -558,6 +564,7 @@ const getBarberMe = async (req, res, next) => {
         name: barber.name,
         email: barber.email,
         phone: barber.phone || '',
+        upiId: barber.upiId || '',
         role: barber.role,
         shopId: shop ? shop._id : null,
         shopName: shop ? shop.name : '',

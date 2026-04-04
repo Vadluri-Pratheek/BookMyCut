@@ -788,15 +788,13 @@ const cancelBookingByBarber = async (req, res, next) => {
     booking.cancellationReason = req.body.cancellationReason;
     await booking.save();
 
-    try {
-      await sendBookingCancellationNotification({
-        booking,
-        cancelledBy: 'barber',
-        cancellationReason: booking.cancellationReason,
-      });
-    } catch (notifyError) {
+    void sendBookingCancellationNotification({
+      booking,
+      cancelledBy: 'barber',
+      cancellationReason: booking.cancellationReason,
+    }).catch((notifyError) => {
       console.error('Failed to send barber cancellation email:', notifyError);
-    }
+    });
 
     return res.status(200).json({ success: true, message: 'Booking cancelled' });
   } catch (error) {

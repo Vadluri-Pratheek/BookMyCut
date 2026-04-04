@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 
 const authController = require('../controllers/authController');
 const { protectCustomer, protectBarber } = require('../middleware/authMiddleware');
+const { isValidUpiId } = require('../utils/upi');
 
 const router = express.Router();
 
@@ -78,6 +79,12 @@ router.post(
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('phone').trim().notEmpty().withMessage('Phone is required'),
+    body('upiId').custom((value) => {
+      if (!isValidUpiId(value)) {
+        throw new Error('Valid UPI ID is required');
+      }
+      return true;
+    }),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('shopName').trim().notEmpty().withMessage('Shop name is required'),
     body('shopAddress').trim().notEmpty().withMessage('Shop address is required'),
@@ -110,6 +117,12 @@ router.post(
     body('name').trim().notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('phone').trim().notEmpty().withMessage('Phone is required'),
+    body('upiId').custom((value) => {
+      if (!isValidUpiId(value)) {
+        throw new Error('Valid UPI ID is required');
+      }
+      return true;
+    }),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     body('shopCode').trim().notEmpty().withMessage('shopCode is required'),
     body('generalWorkStart').isInt({ min: 0, max: 1439 }).withMessage('generalWorkStart must be minutes from midnight'),

@@ -14,6 +14,7 @@ const barberSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true, trim: true },
+    upiId: { type: String, default: '', trim: true, lowercase: true },
     passwordHash: { type: String, required: true },
     passwordResetOtpHash: { type: String, default: null },
     passwordResetOtpExpiresAt: { type: Date, default: null },

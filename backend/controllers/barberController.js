@@ -4,6 +4,7 @@ const Barber = require('../models/Barber');
 const Booking = require('../models/Booking');
 const DaySchedule = require('../models/DaySchedule');
 const { getTodayStr } = require('../utils/timeHelpers');
+const { normalizeUpiId } = require('../utils/upi');
 
 /**
  * Returns the authenticated barber profile and linked shop details.
@@ -173,10 +174,11 @@ const removeShopStaff = async (req, res, next) => {
  */
 const updateBarberProfile = async (req, res, next) => {
   try {
-    const { name, phone } = req.body;
+    const { name, phone, upiId } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (phone) updates.phone = phone;
+    if (upiId !== undefined) updates.upiId = normalizeUpiId(upiId);
 
     const barber = await Barber.findByIdAndUpdate(req.user.id, updates, {
       new: true,
