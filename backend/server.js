@@ -1,17 +1,19 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
+import mongoose from 'mongoose';
 
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
-const shopRoutes = require('./routes/shopRoutes');
-const barberRoutes = require('./routes/barberRoutes');
-const scheduleRoutes = require('./routes/scheduleRoutes');
-const bookingRoutes = require('./routes/bookingRoutes');
-const customerRoutes = require('./routes/customerRoutes');
+import connectDB from './config/db.js';
+import authRoutes from './routes/authRoutes.js';
+import shopRoutes from './routes/shopRoutes.js';
+import barberRoutes from './routes/barberRoutes.js';
+import scheduleRoutes from './routes/scheduleRoutes.js';
+import bookingRoutes from './routes/bookingRoutes.js';
+import customerRoutes from './routes/customerRoutes.js';
 
-connectDB();
+connectDB()
 
 const app = express();
 
@@ -20,7 +22,7 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     success: true,
     message: 'BookMyCut API is running',
     timestamp: new Date().toISOString()
@@ -29,7 +31,6 @@ app.get('/', (req, res) => {
 
 // Debug endpoint to check database connection
 app.get('/api/debug/status', (req, res) => {
-  const mongoose = require('mongoose');
   res.status(200).json({
     success: true,
     message: 'Server is running',

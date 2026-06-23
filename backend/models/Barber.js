@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const breakSchema = new mongoose.Schema(
   {
@@ -31,4 +31,4 @@ const barberSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Barber', barberSchema);
+export default mongoose.model('Barber', barberSchema);

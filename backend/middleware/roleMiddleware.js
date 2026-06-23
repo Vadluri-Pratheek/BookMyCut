@@ -9,6 +9,6 @@ const requireOwner = (req, res, next) => {
   return next();
 };
 
-module.exports = {
+export {
   requireOwner,
 };

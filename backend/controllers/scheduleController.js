@@ -1,10 +1,10 @@
-const Barber = require('../models/Barber');
-const Booking = require('../models/Booking');
-const DaySchedule = require('../models/DaySchedule');
-const Shop = require('../models/Shop');
-const { getTodayStr, isWithinBookingWindow } = require('../utils/timeHelpers');
-const { getEffectiveSlotEndMinutes } = require('../utils/travelTime');
-const { autoCancelExpiredBookings } = require('../utils/bookingLifecycle');
+import Barber from '../models/Barber.js';
+import Booking from '../models/Booking.js';
+import DaySchedule from '../models/DaySchedule.js';
+import Shop from '../models/Shop.js';
+import { getTodayStr, isWithinBookingWindow } from '../utils/timeHelpers.js';
+import { getEffectiveSlotEndMinutes } from '../utils/travelTime.js';
+import { autoCancelExpiredBookings } from '../utils/bookingLifecycle.js';
 
 /**
  * Creates or updates a barber's day schedule.
@@ -167,7 +167,7 @@ const getDayScheduleForShop = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   setupDaySchedule,
   getMySchedule,
   getDayScheduleForShop,

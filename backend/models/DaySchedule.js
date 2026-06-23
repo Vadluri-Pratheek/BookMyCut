@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const breakSchema = new mongoose.Schema(
   {
@@ -24,4 +24,4 @@ const dayScheduleSchema = new mongoose.Schema(
 
 dayScheduleSchema.index({ barberId: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model('DaySchedule', dayScheduleSchema);
+export default mongoose.model('DaySchedule', dayScheduleSchema);

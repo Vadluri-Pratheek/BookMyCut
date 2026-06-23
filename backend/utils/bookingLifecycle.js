@@ -1,6 +1,6 @@
-const Booking = require('../models/Booking');
-const { getTodayStr } = require('./timeHelpers');
-const { sendBookingCancellationNotification } = require('./bookingNotifications');
+import Booking from '../models/Booking.js';
+import { getTodayStr } from './timeHelpers.js';
+import { sendBookingCancellationNotification } from './bookingNotifications.js';
 
 const CURRENT_CUSTOMER_BUFFER_SECONDS = Number(process.env.CURRENT_CUSTOMER_BUFFER_SECONDS || 60);
 const AUTO_CANCEL_BUFFER_SECONDS = Number(process.env.AUTO_CANCEL_BUFFER_SECONDS || 60);
@@ -120,7 +120,7 @@ const autoCancelExpiredBookings = async (baseFilter = {}, referenceTime = new Da
   return result.modifiedCount || 0;
 };
 
-module.exports = {
+export {
   CURRENT_CUSTOMER_BUFFER_SECONDS,
   AUTO_CANCEL_BUFFER_SECONDS,
   TOTAL_AUTO_CANCEL_SECONDS,

@@ -1,9 +1,9 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
+import express from 'express';
+import { body, validationResult } from 'express-validator';
 
-const shopController = require('../controllers/shopController');
-const { protectBarber } = require('../middleware/authMiddleware');
-const { requireOwner } = require('../middleware/roleMiddleware');
+import * as shopController from '../controllers/shopController.js';
+import { protectBarber } from '../middleware/authMiddleware.js';
+import { requireOwner } from '../middleware/roleMiddleware.js';
 
 const router = express.Router();
 
@@ -69,4 +69,4 @@ router.put(
   shopController.updateShopDetails
 );
 
-module.exports = router;
+export default router;

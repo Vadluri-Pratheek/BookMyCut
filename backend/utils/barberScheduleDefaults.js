@@ -62,7 +62,7 @@ const getBarberDefaultSchedule = (barber = {}) =>
     breaks: barber.generalBreaks,
   });
 
-module.exports = {
+export {
   DEFAULT_GENERAL_WORK_START,
   DEFAULT_GENERAL_WORK_END,
   normalizeBreaks,

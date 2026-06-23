@@ -1,9 +1,9 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
+import express from 'express';
+import { body, validationResult } from 'express-validator';
 
-const authController = require('../controllers/authController');
-const { protectCustomer, protectBarber } = require('../middleware/authMiddleware');
-const { isValidUpiId } = require('../utils/upi');
+import * as authController from '../controllers/authController.js';
+import { protectCustomer, protectBarber } from '../middleware/authMiddleware.js';
+import { isValidUpiId } from '../utils/upi.js';
 
 const router = express.Router();
 
@@ -173,4 +173,4 @@ router.get('/customer/me', protectCustomer, authController.getCustomerMe);
 // PROTECTED — returns logged-in barber's profile + shop from DB
 router.get('/barber/me', protectBarber, authController.getBarberMe);
 
-module.exports = router;
+export default router;

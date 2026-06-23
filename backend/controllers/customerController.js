@@ -1,5 +1,5 @@
-const Customer = require('../models/Customer');
-const { normalizeLocationPoint } = require('../utils/locationPoint');
+import Customer from '../models/Customer.js';
+import { normalizeLocationPoint } from '../utils/locationPoint.js';
 
 /**
  * Updates the logged-in customer's profile.
@@ -74,6 +74,6 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   updateProfile,
 };

@@ -4,7 +4,7 @@ const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
 
 const isValidUpiId = (value = '') => UPI_ID_REGEX.test(normalizeUpiId(value));
 
-module.exports = {
+export {
   UPI_ID_REGEX,
   normalizeUpiId,
   isValidUpiId,

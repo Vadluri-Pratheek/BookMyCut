@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const serviceSchema = new mongoose.Schema(
   {
@@ -52,4 +52,4 @@ const shopSchema = new mongoose.Schema(
 
 shopSchema.index({ location: '2dsphere' });
 
-module.exports = mongoose.model('Shop', shopSchema);
+export default mongoose.model('Shop', shopSchema);

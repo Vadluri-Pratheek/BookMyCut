@@ -1,33 +1,33 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const Booking = require('../models/Booking');
-const Shop = require('../models/Shop');
-const Barber = require('../models/Barber');
-const Customer = require('../models/Customer');
-const DaySchedule = require('../models/DaySchedule');
-const {
-  getAvailableSlots: computeAvailableSlots,
+import Booking from '../models/Booking.js';
+import Shop from '../models/Shop.js';
+import Barber from '../models/Barber.js';
+import Customer from '../models/Customer.js';
+import DaySchedule from '../models/DaySchedule.js';
+import {
+  getAvailableSlots as computeAvailableSlots,
   hasOverlap,
   getOccupiedRange,
   buildFreeIntervals,
   doesSlotFitFreeIntervals,
-} = require('../utils/availabilityEngine');
-const { generateBookingCode } = require('../utils/generateCode');
-const {
+} from '../utils/availabilityEngine.js';
+import { generateBookingCode } from '../utils/generateCode.js';
+import {
   minsToTimeStr,
   getTodayStr,
   isWithinBookingWindow,
   isTuesdayDateStr,
   minutesUntilSlot,
-} = require('../utils/timeHelpers');
-const {
+} from '../utils/timeHelpers.js';
+import {
   getTravelBufferMinutes,
   getEffectiveSlotDurationMinutes,
-} = require('../utils/travelTime');
-const { autoCancelExpiredBookings } = require('../utils/bookingLifecycle');
-const { sendBookingCancellationNotification } = require('../utils/bookingNotifications');
-const { normalizeLocationPoint } = require('../utils/locationPoint');
-const { getBarberDefaultSchedule } = require('../utils/barberScheduleDefaults');
+} from '../utils/travelTime.js';
+import { autoCancelExpiredBookings } from '../utils/bookingLifecycle.js';
+import { sendBookingCancellationNotification } from '../utils/bookingNotifications.js';
+import { normalizeLocationPoint } from '../utils/locationPoint.js';
+import { getBarberDefaultSchedule } from '../utils/barberScheduleDefaults.js';
 
 const buildBarberDayAvailability = ({ barber, schedule, bookings, bookingType, shopLocation }) => {
   const effectiveSchedule = schedule || getBarberDefaultSchedule(barber);
@@ -902,8 +902,8 @@ const getShopBookingsBarber = async (req, res, next) => {
   }
 };
 
-module.exports = {
-  getAvailableSlots: getAvailableSlotsHandler,
+export {
+  getAvailableSlotsHandler as getAvailableSlots,
   getShopAggregatedAvailability,
   createBooking,
   cancelBookingByCustomer,

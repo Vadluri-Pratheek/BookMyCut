@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const locationPointSchema = require('./schemas/locationPoint');
+import mongoose from 'mongoose';
+import locationPointSchema from './schemas/locationPoint.js';
 
 const selectedServiceSchema = new mongoose.Schema(
   {
@@ -51,4 +51,4 @@ bookingSchema.index({ barberId: 1, date: 1 });
 bookingSchema.index({ customerId: 1, status: 1 });
 bookingSchema.index({ shopId: 1, date: 1 });
 
-module.exports = mongoose.model('Booking', bookingSchema);
+export default mongoose.model('Booking', bookingSchema);

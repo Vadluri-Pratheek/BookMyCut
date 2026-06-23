@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const locationPointSchema = require('./schemas/locationPoint');
+import mongoose from 'mongoose';
+import locationPointSchema from './schemas/locationPoint.js';
 
 const customerSchema = new mongoose.Schema(
   {
@@ -20,4 +20,4 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model('Customer', customerSchema);
+export default mongoose.model('Customer', customerSchema);

@@ -1,19 +1,19 @@
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-const Customer = require('../models/Customer');
-const Barber = require('../models/Barber');
-const Shop = require('../models/Shop');
-const {
+import Customer from '../models/Customer.js';
+import Barber from '../models/Barber.js';
+import Shop from '../models/Shop.js';
+import {
   getBarberDefaultSchedule,
   parseGeneralScheduleInput,
   validateScheduleWindow,
-} = require('../utils/barberScheduleDefaults');
-const { generateShopCode } = require('../utils/generateCode');
-const { normalizeLocationPoint } = require('../utils/locationPoint');
-const { sendEmail } = require('../utils/mailer');
-const { normalizeUpiId } = require('../utils/upi');
+} from '../utils/barberScheduleDefaults.js';
+import { generateShopCode } from '../utils/generateCode.js';
+import { normalizeLocationPoint } from '../utils/locationPoint.js';
+import { sendEmail } from '../utils/mailer.js';
+import { normalizeUpiId } from '../utils/upi.js';
 
 const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -589,7 +589,7 @@ const getBarberMe = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   registerCustomer,
   loginCustomer,
   registerBarberOwner,

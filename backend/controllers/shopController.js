@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
-const Shop = require('../models/Shop');
-const Barber = require('../models/Barber');
+import mongoose from 'mongoose';
+import Shop from '../models/Shop.js';
+import Barber from '../models/Barber.js';
 
 /**
  * Finds nearby active shops with optional gender filtering.
@@ -240,7 +240,7 @@ const getPublicBarbersForShop = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   getNearbyShops,
   getShopById,
   getShopByCode,

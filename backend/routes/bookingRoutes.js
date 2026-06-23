@@ -1,8 +1,8 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
+import express from 'express';
+import { body, validationResult } from 'express-validator';
 
-const bookingController = require('../controllers/bookingController');
-const { protectCustomer, protectBarber } = require('../middleware/authMiddleware');
+import * as bookingController from '../controllers/bookingController.js';
+import { protectCustomer, protectBarber } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -76,4 +76,4 @@ router.put('/:bookingId/checkin', protectBarber, bookingController.checkInBookin
 // BARBER PROTECTED
 router.put('/:bookingId/check-in', protectBarber, bookingController.checkInBooking);
 
-module.exports = router;
+export default router;

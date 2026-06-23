@@ -72,7 +72,7 @@ const minutesUntilSlot = (dateStr, slotStartMinutes) => {
   return Math.round((slotDateTime.getTime() - Date.now()) / (1000 * 60));
 };
 
-module.exports = {
+export {
   minsToTimeStr,
   timeStrToMins,
   getTodayStr,

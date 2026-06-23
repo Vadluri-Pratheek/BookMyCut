@@ -1,4 +1,4 @@
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 
 let transporter = null;
 
@@ -65,7 +65,7 @@ const sendEmail = async ({ to, subject, text, html }) => {
   });
 };
 
-module.exports = {
+export {
   hasMailConfig,
   getMailFrom,
   sendEmail,

@@ -1,8 +1,8 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
+import express from 'express';
+import { body, validationResult } from 'express-validator';
 
-const scheduleController = require('../controllers/scheduleController');
-const { protectBarber } = require('../middleware/authMiddleware');
+import * as scheduleController from '../controllers/scheduleController.js';
+import { protectBarber } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -42,4 +42,4 @@ router.get('/my', protectBarber, scheduleController.getMySchedule);
 // BARBER PROTECTED
 router.get('/shop', protectBarber, scheduleController.getDayScheduleForShop);
 
-module.exports = router;
+export default router;

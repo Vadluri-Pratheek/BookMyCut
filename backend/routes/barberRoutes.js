@@ -1,10 +1,10 @@
-const express = require('express');
-const { body, validationResult } = require('express-validator');
+import express from 'express';
+import { body, validationResult } from 'express-validator';
 
-const barberController = require('../controllers/barberController');
-const { protectBarber } = require('../middleware/authMiddleware');
-const { requireOwner } = require('../middleware/roleMiddleware');
-const { isValidUpiId } = require('../utils/upi');
+import * as barberController from '../controllers/barberController.js';
+import { protectBarber } from '../middleware/authMiddleware.js';
+import { requireOwner } from '../middleware/roleMiddleware.js';
+import { isValidUpiId } from '../utils/upi.js';
 
 const router = express.Router();
 
@@ -63,4 +63,4 @@ router.get('/traveling/:shopId', barberController.getTravelingBarbersForShop);
 router.get('/staff', protectBarber, requireOwner, barberController.getShopStaff);
 router.delete('/staff/:barberId', protectBarber, requireOwner, barberController.removeShopStaff);
 
-module.exports = router;
+export default router;

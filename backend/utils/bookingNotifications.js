@@ -1,7 +1,7 @@
-const Customer = require('../models/Customer');
-const Barber = require('../models/Barber');
-const Shop = require('../models/Shop');
-const { sendEmail } = require('./mailer');
+import Customer from '../models/Customer.js';
+import Barber from '../models/Barber.js';
+import Shop from '../models/Shop.js';
+import { sendEmail } from './mailer.js';
 
 const buildCancellationSubject = (cancelledBy) =>
   cancelledBy === 'auto'
@@ -59,6 +59,6 @@ const sendBookingCancellationNotification = async ({ booking, cancelledBy, cance
   });
 };
 
-module.exports = {
+export {
   sendBookingCancellationNotification,
 };

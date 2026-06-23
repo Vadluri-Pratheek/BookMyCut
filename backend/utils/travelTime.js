@@ -59,7 +59,7 @@ const getEffectiveSlotEndMinutes = ({ slotStartMinutes, serviceDuration, custome
     shopLocation,
   });
 
-module.exports = {
+export {
   AVERAGE_MINUTES_PER_KM,
   normalizePoint,
   getDistanceKm,

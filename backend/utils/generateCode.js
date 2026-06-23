@@ -14,7 +14,7 @@ const generateShopCode = () => `SC${randomCode(6)}`;
 
 const generateBookingCode = () => `BK${randomCode(8)}`;
 
-module.exports = {
+export {
   generateShopCode,
   generateBookingCode,
 };

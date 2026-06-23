@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const locationPointSchema = new mongoose.Schema(
   {
@@ -13,4 +13,4 @@ const locationPointSchema = new mongoose.Schema(
   { _id: false }
 );
 
-module.exports = locationPointSchema;
+export default locationPointSchema;

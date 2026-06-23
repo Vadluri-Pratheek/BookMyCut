@@ -1,10 +1,10 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
-const Barber = require('../models/Barber');
-const Booking = require('../models/Booking');
-const DaySchedule = require('../models/DaySchedule');
-const { getTodayStr } = require('../utils/timeHelpers');
-const { normalizeUpiId } = require('../utils/upi');
+import Barber from '../models/Barber.js';
+import Booking from '../models/Booking.js';
+import DaySchedule from '../models/DaySchedule.js';
+import { getTodayStr } from '../utils/timeHelpers.js';
+import { normalizeUpiId } from '../utils/upi.js';
 
 /**
  * Returns the authenticated barber profile and linked shop details.
@@ -191,7 +191,7 @@ const updateBarberProfile = async (req, res, next) => {
   }
 };
 
-module.exports = {
+export {
   getBarberProfile,
   toggleHomeServiceAvailability,
   getTravelingBarbersForShop,

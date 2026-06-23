@@ -1,5 +1,5 @@
-const { minsToTimeStr } = require('./timeHelpers');
-const { getEffectiveSlotEndMinutes } = require('./travelTime');
+import { minsToTimeStr } from './timeHelpers.js';
+import { getEffectiveSlotEndMinutes } from './travelTime.js';
 
 const hasOverlap = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && aEnd > bStart;
 
@@ -138,7 +138,7 @@ const getAvailableSlots = ({
   return slots;
 };
 
-module.exports = {
+export {
   getAvailableSlots,
   hasOverlap,
   getOccupiedRange,

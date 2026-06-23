@@ -40,6 +40,6 @@ const normalizeLocationPoint = (location) => {
   return normalized;
 };
 
-module.exports = {
+export {
   normalizeLocationPoint,
 };
