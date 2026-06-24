@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 
-import Booking from '../models/Booking.js';
-import Shop from '../models/Shop.js';
-import Barber from '../models/Barber.js';
-import Customer from '../models/Customer.js';
-import DaySchedule from '../models/DaySchedule.js';
+import Booking from '../models/booking.model.js';
+import Shop from '../models/shop.model.js';
+import Barber from '../models/barber.model.js';
+import Customer from '../models/customer.model.js';
+import DaySchedule from '../models/daySchedule.model.js';
 import {
   getAvailableSlots as computeAvailableSlots,
   hasOverlap,
@@ -912,3 +912,5 @@ export {
   getMyBookingsCustomer,
   getShopBookingsBarber,
 };
+
+

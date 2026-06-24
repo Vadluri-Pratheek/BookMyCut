@@ -14,3 +14,4 @@ const locationPointSchema = new mongoose.Schema(
 );
 
 export default locationPointSchema;
+

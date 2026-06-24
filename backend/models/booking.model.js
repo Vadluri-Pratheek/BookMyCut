@@ -52,3 +52,4 @@ bookingSchema.index({ customerId: 1, status: 1 });
 bookingSchema.index({ shopId: 1, date: 1 });
 
 export default mongoose.model('Booking', bookingSchema);
+

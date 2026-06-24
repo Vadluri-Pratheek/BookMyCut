@@ -6,12 +6,12 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 
 import connectDB from './config/db.js';
-import authRoutes from './routes/authRoutes.js';
-import shopRoutes from './routes/shopRoutes.js';
-import barberRoutes from './routes/barberRoutes.js';
-import scheduleRoutes from './routes/scheduleRoutes.js';
-import bookingRoutes from './routes/bookingRoutes.js';
-import customerRoutes from './routes/customerRoutes.js';
+import authRoutes from './routes/auth.route.js';
+import shopRoutes from './routes/shop.route.js';
+import barberRoutes from './routes/barber.route.js';
+import scheduleRoutes from './routes/schedule.route.js';
+import bookingRoutes from './routes/booking.route.js';
+import customerRoutes from './routes/customer.route.js';
 
 connectDB()
 
@@ -60,3 +60,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   process.stdout.write(`BookMyCut server running on port ${PORT}\n`);
 });
+
+

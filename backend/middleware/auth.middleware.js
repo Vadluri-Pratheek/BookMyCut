@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 
-import Barber from '../models/Barber.js';
+import Barber from '../models/barber.model.js';
 
 const protect = (req, res, next) => {
   try {
@@ -76,3 +76,6 @@ export {
   protectCustomer,
   protectBarber,
 };
+
+
+

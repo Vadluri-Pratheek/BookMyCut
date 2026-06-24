@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
 
-import Barber from '../models/Barber.js';
-import Booking from '../models/Booking.js';
-import DaySchedule from '../models/DaySchedule.js';
+import Barber from '../models/barber.model.js';
+import Booking from '../models/booking.model.js';
+import DaySchedule from '../models/daySchedule.model.js';
 import { getTodayStr } from '../utils/timeHelpers.js';
 import { normalizeUpiId } from '../utils/upi.js';
 
@@ -199,3 +199,5 @@ export {
   removeShopStaff,
   updateBarberProfile,
 };
+
+

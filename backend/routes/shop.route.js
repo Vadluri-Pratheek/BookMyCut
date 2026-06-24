@@ -1,9 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 
-import * as shopController from '../controllers/shopController.js';
-import { protectBarber } from '../middleware/authMiddleware.js';
-import { requireOwner } from '../middleware/roleMiddleware.js';
+import * as shopController from '../controllers/shop.controller.js';
+import { protectBarber } from '../middleware/auth.middleware.js';
+import { requireOwner } from '../middleware/role.middleware.js';
 
 const router = express.Router();
 
@@ -70,3 +70,5 @@ router.put(
 );
 
 export default router;
+
+

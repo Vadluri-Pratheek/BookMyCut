@@ -1,4 +1,4 @@
-import Booking from '../models/Booking.js';
+import Booking from '../models/booking.model.js';
 import { getTodayStr } from './timeHelpers.js';
 import { sendBookingCancellationNotification } from './bookingNotifications.js';
 
@@ -129,3 +129,4 @@ export {
   shouldAutoCancelBooking,
   autoCancelExpiredBookings,
 };
+

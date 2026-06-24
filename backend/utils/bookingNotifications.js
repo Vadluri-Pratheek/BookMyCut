@@ -1,6 +1,6 @@
-import Customer from '../models/Customer.js';
-import Barber from '../models/Barber.js';
-import Shop from '../models/Shop.js';
+import Customer from '../models/customer.model.js';
+import Barber from '../models/barber.model.js';
+import Shop from '../models/shop.model.js';
 import { sendEmail } from './mailer.js';
 
 const buildCancellationSubject = (cancelledBy) =>
@@ -62,3 +62,4 @@ const sendBookingCancellationNotification = async ({ booking, cancelledBy, cance
 export {
   sendBookingCancellationNotification,
 };
+

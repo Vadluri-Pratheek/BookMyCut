@@ -32,3 +32,4 @@ const barberSchema = new mongoose.Schema(
 );
 
 export default mongoose.model('Barber', barberSchema);
+

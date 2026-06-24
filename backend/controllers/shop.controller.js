@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import Shop from '../models/Shop.js';
-import Barber from '../models/Barber.js';
+import Shop from '../models/shop.model.js';
+import Barber from '../models/barber.model.js';
 
 /**
  * Finds nearby active shops with optional gender filtering.
@@ -249,3 +249,5 @@ export {
   updateMyShopDetails,
   getPublicBarbersForShop,
 };
+
+

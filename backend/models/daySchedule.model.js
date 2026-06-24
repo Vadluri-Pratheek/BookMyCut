@@ -25,3 +25,4 @@ const dayScheduleSchema = new mongoose.Schema(
 dayScheduleSchema.index({ barberId: 1, date: 1 }, { unique: true });
 
 export default mongoose.model('DaySchedule', dayScheduleSchema);
+

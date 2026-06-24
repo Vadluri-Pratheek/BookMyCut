@@ -1,6 +1,6 @@
 import express from 'express';
-import * as customerController from '../controllers/customerController.js';
-import { protectCustomer } from '../middleware/authMiddleware.js';
+import * as customerController from '../controllers/customer.controller.js';
+import { protectCustomer } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -8,3 +8,5 @@ const router = express.Router();
 router.put('/profile', protectCustomer, customerController.updateProfile);
 
 export default router;
+
+

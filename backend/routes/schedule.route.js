@@ -1,8 +1,8 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 
-import * as scheduleController from '../controllers/scheduleController.js';
-import { protectBarber } from '../middleware/authMiddleware.js';
+import * as scheduleController from '../controllers/schedule.controller.js';
+import { protectBarber } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -43,3 +43,5 @@ router.get('/my', protectBarber, scheduleController.getMySchedule);
 router.get('/shop', protectBarber, scheduleController.getDayScheduleForShop);
 
 export default router;
+
+

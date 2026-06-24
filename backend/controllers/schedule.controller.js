@@ -1,7 +1,7 @@
-import Barber from '../models/Barber.js';
-import Booking from '../models/Booking.js';
-import DaySchedule from '../models/DaySchedule.js';
-import Shop from '../models/Shop.js';
+import Barber from '../models/barber.model.js';
+import Booking from '../models/booking.model.js';
+import DaySchedule from '../models/daySchedule.model.js';
+import Shop from '../models/shop.model.js';
 import { getTodayStr, isWithinBookingWindow } from '../utils/timeHelpers.js';
 import { getEffectiveSlotEndMinutes } from '../utils/travelTime.js';
 import { autoCancelExpiredBookings } from '../utils/bookingLifecycle.js';
@@ -172,3 +172,5 @@ export {
   getMySchedule,
   getDayScheduleForShop,
 };
+
+

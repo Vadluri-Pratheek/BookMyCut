@@ -1,8 +1,8 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 
-import * as bookingController from '../controllers/bookingController.js';
-import { protectCustomer, protectBarber } from '../middleware/authMiddleware.js';
+import * as bookingController from '../controllers/booking.controller.js';
+import { protectCustomer, protectBarber } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 
@@ -77,3 +77,5 @@ router.put('/:bookingId/checkin', protectBarber, bookingController.checkInBookin
 router.put('/:bookingId/check-in', protectBarber, bookingController.checkInBooking);
 
 export default router;
+
+

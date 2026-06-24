@@ -1,4 +1,4 @@
-import Customer from '../models/Customer.js';
+import Customer from '../models/customer.model.js';
 import { normalizeLocationPoint } from '../utils/locationPoint.js';
 
 /**
@@ -77,3 +77,5 @@ const updateProfile = async (req, res, next) => {
 export {
   updateProfile,
 };
+
+

@@ -1,9 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 
-import * as barberController from '../controllers/barberController.js';
-import { protectBarber } from '../middleware/authMiddleware.js';
-import { requireOwner } from '../middleware/roleMiddleware.js';
+import * as barberController from '../controllers/barber.controller.js';
+import { protectBarber } from '../middleware/auth.middleware.js';
+import { requireOwner } from '../middleware/role.middleware.js';
 import { isValidUpiId } from '../utils/upi.js';
 
 const router = express.Router();
@@ -64,3 +64,5 @@ router.get('/staff', protectBarber, requireOwner, barberController.getShopStaff)
 router.delete('/staff/:barberId', protectBarber, requireOwner, barberController.removeShopStaff);
 
 export default router;
+
+

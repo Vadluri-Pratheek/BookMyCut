@@ -1,8 +1,8 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
 
-import * as authController from '../controllers/authController.js';
-import { protectCustomer, protectBarber } from '../middleware/authMiddleware.js';
+import * as authController from '../controllers/auth.controller.js';
+import { protectCustomer, protectBarber } from '../middleware/auth.middleware.js';
 import { isValidUpiId } from '../utils/upi.js';
 
 const router = express.Router();
@@ -174,3 +174,5 @@ router.get('/customer/me', protectCustomer, authController.getCustomerMe);
 router.get('/barber/me', protectBarber, authController.getBarberMe);
 
 export default router;
+
+
