@@ -145,7 +145,7 @@ export default client;
 
 Update your backend to accept requests from the frontend:
 
-**File**: `backend/server.js`
+**File**: `backend/src/app.js`
 ```javascript
 const corsOptions = {
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -224,3 +224,4 @@ FRONTEND_URL=https://bookmycut-frontend.onrender.com
 - [Render Documentation](https://render.com/docs)
 - [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
 - [Environment Variables Guide](https://render.com/docs/environment-variables)
+

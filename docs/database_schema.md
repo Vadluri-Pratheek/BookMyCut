@@ -130,6 +130,7 @@ module.exports = mongoose.model('Booking', BookingSchema);
 ---
 
 ## 💡 Developer Action Plan for the Backend
-1. **Initialize Mongoose**: Set up your backend MongoDB connection in `server.js`.
-2. **Translate to Models**: Create a `models/` directory in your backend folder and save each schema to `Shop.js`, `Barber.js`, `Customer.js`, and `Booking.js`.
+1. **Initialize Mongoose**: Keep the MongoDB connection in `backend/src/config/db.js` and start it from `backend/src/index.js`.
+2. **Translate to Models**: Keep schemas in `backend/src/models/` using names like `shop.model.js`, `barber.model.js`, `customer.model.js`, and `booking.model.js`.
 3. **The Booking Engine Logic**: In the route (`POST /api/bookings/available-slots`), you calculate availability by pulling all bookings for the requested `<shopId>` and `<date>`, filtering by `barberId`, and mapping out the gaps just as we prototyped on the frontend!
+

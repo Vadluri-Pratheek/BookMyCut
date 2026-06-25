@@ -9,26 +9,31 @@ A full-stack MERN application for managing barber shop bookings and services.
 
 ## Project Structure
 
-```
-├── backend/               # Node.js + Express API
-│   ├── controllers/       # Route controllers
-│   ├── middleware/        # Custom middleware (auth, error handling)
-│   ├── models/            # Mongoose schemas/models
-│   ├── routes/            # API route definitions
-│   ├── .env               # Environment variables
-│   ├── .gitignore
-│   ├── package.json
-│   └── server.js          # Server entry point
-│
-└── frontend/              # React app (Vite)
-    ├── public/
-    ├── src/
-    │   ├── assets/
-    │   ├── App.jsx
-    │   └── main.jsx
-    ├── .env               # Frontend env (VITE_API_BASE_URL)
-    ├── index.html
-    └── package.json
+```text
+backend/                  # Node.js + Express API
+  src/
+    app.js                # Express app setup and routes
+    index.js              # DB connection and server startup
+    config/               # Database/config setup
+    controllers/          # Route controllers
+    middleware/           # Auth and role middleware
+    models/               # Mongoose schemas/models
+    routes/               # API route definitions
+    utils/                # Shared backend helpers
+  .env                    # Environment variables
+  .gitignore
+  package.json
+  server.js               # Compatibility entry point
+
+frontend/                 # React app (Vite)
+  public/
+  src/
+    assets/
+    App.jsx
+    main.jsx
+  .env                    # Frontend env (VITE_API_BASE_URL)
+  index.html
+  package.json
 ```
 
 ## Getting Started
@@ -68,3 +73,4 @@ npm run dev    # starts on http://localhost:5173
 | Variable           | Description               | Default                       |
 |--------------------|---------------------------|-------------------------------|
 | VITE_API_BASE_URL  | Backend API base URL      | http://localhost:5000/api     |
+
