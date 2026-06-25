@@ -1,7 +1,6 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap');
 
-/* ── Reset & Base ─────────────────────────────────────────── */
 *,
 *::before,
 *::after {
@@ -70,7 +69,6 @@ select {
   font-family: inherit;
 }
 
-/* ── Layout Helpers ────────────────────────────────────────── */
 .page-center {
   min-height: 100vh;
   display: flex;
@@ -87,7 +85,6 @@ select {
   align-items: center;
 }
 
-/* ── Card ──────────────────────────────────────────────────── */
 .card {
   background: var(--surface);
   border-radius: var(--radius-xl);
@@ -311,7 +308,6 @@ select {
   }
 }
 
-/* ── Scrollbar ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -324,3 +320,26 @@ select {
   background: var(--teal-light);
   border-radius: 3px;
 }
+
+/* Phase 4 Utilities */
+.modal-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); }
+.modal-content { background: var(--surface); padding: 2rem; border-radius: 16px; width: 480px; max-width: 90vw; box-shadow: 0 10px 40px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.form-label { display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin: 0 0 6px; text-transform: uppercase; }
+.form-input { width: 100%; padding: 0.6rem 0.8rem; border-radius: 8px; border: 1px solid var(--border); outline: none; font-family: 'Poppins', sans-serif; font-size: 13px; }
+.btn-cancel { flex: 1; padding: 0.6rem; background: #f8fafc; color: var(--text-secondary); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; }
+.btn-cancel:disabled { cursor: not-allowed; }
+.btn-save { flex: 1; padding: 0.6rem; background: linear-gradient(135deg, var(--teal), #0f766e); color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; }
+.btn-save:disabled { cursor: not-allowed; }
+.btn-navigate { padding: 4px 8px; font-size: 11px; background: var(--surface); color: var(--teal); border: 1px solid var(--teal); border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; transition: opacity 0.15s; }
+.btn-navigate:hover { opacity: 0.8; }
+.btn-danger { padding: 4px 8px; font-size: 11px; background: #ef4444; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-family: 'Poppins', sans-serif; transition: opacity 0.15s; }
+.btn-danger:hover { opacity: 0.8; }
+.btn-danger:disabled { cursor: not-allowed; opacity: 0.7; }
+.dashboard-header { max-width: 1100px; margin: 0 auto; height: 64px; display: flex; align-items: center; gap: 1rem; }
+.badge-verification { font-size: 11px; font-weight: 700; color: var(--teal); background: rgba(13,148,136,0.1); border: 1px solid rgba(13,148,136,0.3); border-radius: 4px; padding: 2px 6px; letter-spacing: 0.05em; }
+.badge-home { font-size: 9px; font-weight: 700; color: #ec4899; background: #fdf2f8; border: 1px solid #fbcfe8; border-radius: 4px; padding: 2px 6px; letter-spacing: 0.05em; }
+.badge-active { background: rgba(13,148,136,0.12); color: var(--teal); font-size: 10px; font-weight: 700; border-radius: 20px; padding: 1px 8px; border: 1px solid rgba(13,148,136,0.25); }
+.booking-card { border: 1px solid var(--border); border-radius: 14px; padding: 1rem; background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; flex-direction: column; }
+.one-line-ellipsis { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.two-line-clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

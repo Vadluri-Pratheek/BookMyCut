@@ -1,8 +1,7 @@
 // Services data derived from Services.txt
 // gender: 'male' | 'female' | 'both'
 export const SERVICES = [
-  // ── Male Services ──────────────────────────────────────────────
-  { id: 'm1',  name: 'Haircut',                      gender: 'male',   duration: 35 },
+    { id: 'm1',  name: 'Haircut',                      gender: 'male',   duration: 35 },
   { id: 'm2',  name: 'Kids Haircut',                  gender: 'male',   duration: 30 },
   { id: 'm3',  name: 'Head Shave',                    gender: 'male',   duration: 30 },
   { id: 'm4',  name: 'Beard Trim & Styling',          gender: 'male',   duration: 25 },
@@ -18,8 +17,7 @@ export const SERVICES = [
   { id: 'm14', name: 'Manicure',                      gender: 'male',   duration: 35 },
   { id: 'm15', name: 'Pedicure',                      gender: 'male',   duration: 45 },
 
-  // ── Female Services ────────────────────────────────────────────
-  { id: 'f1',  name: 'Haircut & Trim',                       gender: 'female', duration: 45  },
+    { id: 'f1',  name: 'Haircut & Trim',                       gender: 'female', duration: 45  },
   { id: 'f2',  name: 'Kids Haircut',                          gender: 'female', duration: 45  },
   { id: 'f3',  name: 'Thermal Styling & Blow-dry',            gender: 'female', duration: 50  },
   { id: 'f4',  name: 'Root Touch-Up Color',                   gender: 'female', duration: 45  },
@@ -45,8 +43,7 @@ export const SERVICES = [
   { id: 'f24', name: 'Bridal Makeup',                         gender: 'female', duration: 240 },
   { id: 'f25', name: 'Mehndi (Henna) Application',            gender: 'female', duration: 165 },
 
-  // ── Cultural / Specialty (both genders) ───────────────────────
-  { id: 'c1',  name: 'Mundan (Child\'s First Head Shave)',    gender: 'both', duration: 45 },
+    { id: 'c1',  name: 'Mundan (Child\'s First Head Shave)',    gender: 'both', duration: 45 },
   { id: 'c2',  name: 'Aesthetic Piercing (Ear/Nose)',          gender: 'both', duration: 15 },
 ];
 

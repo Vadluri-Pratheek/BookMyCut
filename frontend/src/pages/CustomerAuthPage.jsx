@@ -10,7 +10,6 @@ import RoleBadge from '../components/RoleBadge';
 import { apiRequest, setCustomerProfileCache, setCustomerToken } from '../api/client';
 import '../App.css';
 
-/* ── Validation helpers ──────────────────────────────────── */
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRe = /^[6-9]\d{9}$/;
 const CUSTOMER_TERMS = [
@@ -39,7 +38,6 @@ const persistCustomerSession = (payload = {}) => {
   });
 };
 
-/* ── Login Form ──────────────────────────────────────────── */
 const LoginForm = ({ onSwitch, onLogin }) => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -136,7 +134,6 @@ const LoginForm = ({ onSwitch, onLogin }) => {
   );
 };
 
-/* ── Signup Form ─────────────────────────────────────────── */
 const SignupForm = ({ onSwitch, onLogin }) => {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
@@ -305,7 +302,6 @@ const SignupForm = ({ onSwitch, onLogin }) => {
   );
 };
 
-/* ── Page ─────────────────────────────────────────────────── */
 const CustomerAuthPage = () => {
   const [tab, setTab] = useState('login');
   const navigate = useNavigate();

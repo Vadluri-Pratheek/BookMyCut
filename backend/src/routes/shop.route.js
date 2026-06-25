@@ -1,24 +1,14 @@
 import express from 'express';
-import { body, validationResult } from 'express-validator';
+import { body } from 'express-validator';
 
 import * as shopController from '../controllers/shop.controller.js';
 import { protectBarber } from '../middleware/auth.middleware.js';
 import { requireOwner } from '../middleware/role.middleware.js';
+import { validate } from '../middleware/validation.middleware.js';
 
 const router = express.Router();
 
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()[0].msg,
-    });
-  }
-
-  return next();
-};
 
 // PUBLIC
 router.get('/nearby', shopController.getNearbyShops);

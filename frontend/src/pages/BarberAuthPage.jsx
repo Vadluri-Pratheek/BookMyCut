@@ -23,7 +23,6 @@ import {
 import { formatCoordinateAddress, normalizeLocation } from '../utils/location';
 import '../App.css';
 
-/* ── Validation ──────────────────────────────────────────── */
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRe = /^[6-9]\d{9}$/;
 const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
@@ -216,7 +215,6 @@ const WorkingHoursSection = ({ form, set, errors, prefix }) => (
   </div>
 );
 
-/* ── Gender Radio ────────────────────────────────────────── */
 const GenderRadio = ({ value, onChange }) => (
   <div className="input-group">
     <label>Gender Served <span style={{ color: 'var(--text-error)' }}>*</span></label>
@@ -235,7 +233,6 @@ const GenderRadio = ({ value, onChange }) => (
   </div>
 );
 
-/* ── Services Section ────────────────────────────────────── */
 const ServicesSection = ({ gender, selectedIds, onToggle, error }) => {
   const services = getServicesByGender(gender);
   return (
@@ -268,9 +265,6 @@ const ServicesSection = ({ gender, selectedIds, onToggle, error }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────
-   LOGIN FORM
-───────────────────────────────────────────────────────── */
 const BarberLoginForm = ({ onSwitch, onLogin }) => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -361,9 +355,6 @@ const BarberLoginForm = ({ onSwitch, onLogin }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────
-   MODE SELECTION
-───────────────────────────────────────────────────────── */
 const ModeSelection = ({ onSelect }) => (
   <div className="form-stack" style={{ gap: '0.85rem' }}>
     <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: 500 }}>
@@ -388,9 +379,6 @@ const ModeSelection = ({ onSelect }) => (
   </div>
 );
 
-/* ─────────────────────────────────────────────────────────
-   OWNER SIGNUP FORM
-───────────────────────────────────────────────────────── */
 const OwnerSignupForm = ({ onBack }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -517,7 +505,7 @@ const OwnerSignupForm = ({ onBack }) => {
         <FaArrowLeft size={11} /> Back
       </button>
 
-      {/* ── Personal Details ── */}
+      {}
       <div className="section-heading">Personal Details</div>
       <InputField label="Full Name" id="owner-name" placeholder="Your full name"
         value={form.name} onChange={set('name')} error={errors.name} required />
@@ -537,7 +525,7 @@ const OwnerSignupForm = ({ onBack }) => {
         value={form.confirmPassword} onChange={set('confirmPassword')}
         error={errors.confirmPassword} required autoComplete="new-password" />
 
-      {/* ── Shop Details ── */}
+      {}
       <WorkingHoursSection form={form} set={set} errors={errors} prefix="owner" />
 
       <div className="section-heading" style={{ marginTop: '0.5rem' }}>Shop Details</div>
@@ -572,7 +560,7 @@ const OwnerSignupForm = ({ onBack }) => {
         {errors.map && <span className="error-msg">⚠ {errors.map}</span>}
       </div>
 
-      {/* ── Services ── */}
+      {}
       <div style={{ marginTop: '0.5rem' }}>
         <ServicesSection
           gender={gender}
@@ -590,7 +578,7 @@ const OwnerSignupForm = ({ onBack }) => {
         </label>
       )}
 
-      {/* ── Terms ── */}
+      {}
       <label className="check-label">
         <input type="checkbox" checked={form.terms}
           onChange={() => setForm((f) => ({ ...f, terms: !f.terms }))} />
@@ -625,9 +613,6 @@ const OwnerSignupForm = ({ onBack }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────
-   JOIN SIGNUP FORM
-───────────────────────────────────────────────────────── */
 const JoinSignupForm = ({ onBack }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -672,7 +657,7 @@ const JoinSignupForm = ({ onBack }) => {
             setHomeServiceBarber(false);
           }
         }
-      } catch (_) {
+      } catch {
         if (!cancelled) {
           setShopPreview(null);
           setHomeServiceBarber(false);
@@ -736,7 +721,7 @@ const JoinSignupForm = ({ onBack }) => {
         <FaArrowLeft size={11} /> Back
       </button>
 
-      {/* ── Personal Details ── */}
+      {}
       <div className="section-heading">Personal Details</div>
       <InputField label="Full Name" id="join-name" placeholder="Your full name"
         value={form.name} onChange={set('name')} error={errors.name} required />
@@ -756,7 +741,7 @@ const JoinSignupForm = ({ onBack }) => {
         value={form.confirmPassword} onChange={set('confirmPassword')}
         error={errors.confirmPassword} required autoComplete="new-password" />
 
-      {/* ── Shop Joining ── */}
+      {}
       <WorkingHoursSection form={form} set={set} errors={errors} prefix="join" />
 
       <div className="section-heading" style={{ marginTop: '0.5rem' }}>Shop Joining</div>
@@ -805,7 +790,7 @@ const JoinSignupForm = ({ onBack }) => {
 
 
 
-      {/* ── Terms ── */}
+      {}
       <label className="check-label">
         <input type="checkbox" checked={form.terms}
           onChange={() => setForm((f) => ({ ...f, terms: !f.terms }))} />
@@ -840,9 +825,6 @@ const JoinSignupForm = ({ onBack }) => {
   );
 };
 
-/* ─────────────────────────────────────────────────────────
-   BARBER SIGNUP WRAPPER — mode router
-───────────────────────────────────────────────────────── */
 const BarberSignupSection = () => {
   const [mode, setMode] = useState(null); // null | 'owner' | 'join'
 
@@ -851,9 +833,6 @@ const BarberSignupSection = () => {
   return <ModeSelection onSelect={setMode} />;
 };
 
-/* ─────────────────────────────────────────────────────────
-   BARBER AUTH PAGE
-───────────────────────────────────────────────────────── */
 const BarberAuthPage = () => {
   const [tab, setTab] = useState('login');
   const navigate = useNavigate();

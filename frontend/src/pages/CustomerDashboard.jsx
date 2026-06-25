@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaArrowLeft, FaCheck, FaCrosshairs } from 'react-icons/fa';
 import { FaScissors, FaUser, FaChevronDown, FaXmark, FaCalendarDays } from 'react-icons/fa6';
 import BrandLogo from '../components/BrandLogo';
@@ -10,11 +9,19 @@ import {
   setCustomerProfileCache,
   setCustomerToken,
 } from '../api/client';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { getLocalDateStr, getLocalDateWithOffset, isTuesdayDateStr } from '../utils/date';
-import { getCurrentBrowserLocation, normalizeLocation, resolveLocationDetails } from '../utils/location';
+import { getCurrentBrowserLocation, normalizeLocation } from '../utils/location';
 import { openDirectionsFromCurrentLocation } from '../utils/navigation';
 import L from 'leaflet';
+
+import { ClickHandler } from '../components/CustomerMapClickHandler';
+import { ActionNotice } from '../components/CustomerActionNotice';
+import { Stars } from '../components/CustomerStars';
+import { ContinuousTimeline } from '../components/CustomerContinuousTimeline';
+import { ShopCard } from '../components/CustomerShopCard';
+import { ProfileDropdown } from '../components/CustomerProfileDropdown';
+
 // Fix Leaflet default icon paths broken by bundlers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -23,58 +30,39 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-function ClickHandler({ onSelect }) {
-  useMapEvents({
-    click(e) {
-      const { lat, lng } = e.latlng;
-      void resolveLocationDetails({ lat, lng, source: 'map' }, {
-        address: `Selected location (${lat.toFixed(5)}, ${lng.toFixed(5)})`,
-      }).then((location) => {
-        if (location) {
-          onSelect(location);
-        }
-      });
-    },
-  });
-  return null;
-}
-
-/* ─── Theme ─────────────────────────────────────────────────── */
-const T = {
+export const T = {
   bg: '#f1f5f9', surface: '#ffffff', s2: '#f8fafc', s3: '#f1f5f9',
   br: '#e2e8f0', br2: '#cbd5e1',
   text: '#0f172a', text2: '#475569', text3: '#94a3b8',
   gold: '#0d9488', green: '#5a9e6f', amber: '#c97c2e',
 };
-const SHOP_CARD_MIN_HEIGHT = 250;
-const BOOKING_CARD_MIN_HEIGHT = 170;
-const CUSTOMER_TIMELINE_OPEN = 7 * 60;
-const CUSTOMER_TIMELINE_CLOSE = 23 * 60;
-const ONE_LINE_ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const TWO_LINE_CLAMP = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' };
+export const SHOP_CARD_MIN_HEIGHT = 250;
+export const BOOKING_CARD_MIN_HEIGHT = 170;
+export const CUSTOMER_TIMELINE_OPEN = 7 * 60;
+export const CUSTOMER_TIMELINE_CLOSE = 23 * 60;
+export const ONE_LINE_ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+export const TWO_LINE_CLAMP = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' };
 
-/* ─── Utilities ─────────────────────────────────────────────── */
-const pct = (m, open, total) => `${((m - open) / total * 100).toFixed(3)}%`;
-const pctW = (d, total) => `${(d / total * 100).toFixed(3)}%`;
-const getNowMins = () => { const n = new Date(); return n.getHours() * 60 + n.getMinutes(); };
-const fmtTime = (mins) => {
+export const pct = (m, open, total) => `${((m - open) / total * 100).toFixed(3)}%`;
+export const pctW = (d, total) => `${(d / total * 100).toFixed(3)}%`;
+export const fmtTime = (mins) => {
   if (mins == null) return '--';
   const h = Math.floor(mins / 60), m = mins % 60;
   const ampm = h >= 12 ? 'PM' : 'AM';
   const hh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
   return `${hh}:${String(m).padStart(2, '0')} ${ampm}`;
 };
-const getDateStr = (offset = 0) => getLocalDateStr(offset);
-const getDayLabel = (offset) => {
+export const getDateStr = (offset = 0) => getLocalDateStr(offset);
+export const getDayLabel = (offset) => {
   if (offset === 0) return 'Today';
   if (offset === 1) return 'Tomorrow';
   const d = getLocalDateWithOffset(offset);
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 };
-const DATES = [0, 1, 2, 3].map(o => ({ offset: o, str: getDateStr(o), label: getDayLabel(o) }));
-const INITIAL_BOOKING_DATE = DATES.find((date) => !isTuesdayDateStr(date.str)) || DATES[0];
-const CURRENT_CUSTOMER_BUFFER_SECONDS = 60;
-const AUTO_CANCEL_BUFFER_SECONDS = 60;
+export const DATES = [0, 1, 2, 3].map(o => ({ offset: o, str: getDateStr(o), label: getDayLabel(o) }));
+export const INITIAL_BOOKING_DATE = DATES.find((date) => !isTuesdayDateStr(date.str)) || DATES[0];
+export const CURRENT_CUSTOMER_BUFFER_SECONDS = 60;
+export const AUTO_CANCEL_BUFFER_SECONDS = 60;
 const BOOKING_SYNC_STORAGE_KEY = 'bookmycut_booking_sync';
 const BOOKING_SYNC_EVENT_NAME = 'bookmycut_booking_sync';
 const BOOKING_CONFIRM_REDIRECT_MS = 800;
@@ -140,7 +128,7 @@ const emitBookingSync = (payload = {}) => {
   const detail = { ...payload, timestamp: Date.now() };
   try {
     localStorage.setItem(BOOKING_SYNC_STORAGE_KEY, JSON.stringify(detail));
-  } catch (_) {
+  } catch {
     /* ignore sync persistence issues */
   }
   window.dispatchEvent(new CustomEvent(BOOKING_SYNC_EVENT_NAME, { detail }));
@@ -174,34 +162,6 @@ const buildUpiPaymentLink = ({ upiId, payeeName, amount, note }) => {
   }
 
   return `upi://pay?${params.toString()}`;
-};
-
-const ActionNotice = ({ notice }) => {
-  if (!notice?.message) {
-    return null;
-  }
-
-  const isError = notice.type === 'error';
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 18,
-      right: 18,
-      zIndex: 120,
-      maxWidth: 360,
-      padding: '0.8rem 1rem',
-      borderRadius: 12,
-      border: `1px solid ${isError ? '#fca5a5' : 'rgba(13,148,136,0.25)'}`,
-      background: isError ? '#fef2f2' : 'rgba(13,148,136,0.08)',
-      color: isError ? '#b91c1c' : T.gold,
-      boxShadow: '0 10px 30px rgba(15,23,42,0.12)',
-      fontSize: 13,
-      fontWeight: 600,
-      fontFamily: "'Poppins',sans-serif",
-    }}>
-      {notice.message}
-    </div>
-  );
 };
 
 const formatBookingDateLabel = (isoDate) => {
@@ -251,324 +211,6 @@ const mapApiBookingToCustomerUi = (b) => {
   };
 };
 
-/* ─── Stars ─────────────────────────────────────────────────── */
-const Stars = ({ rating }) => (
-  <span style={{ color: T.gold, fontSize: 12 }}>
-    {'★'.repeat(Math.floor(rating))}{'☆'.repeat(5 - Math.floor(rating))}
-    <span style={{ color: T.text2, marginLeft: 4, fontSize: 11 }}>{rating}</span>
-  </span>
-);
-
-/* ─── Continuous Timeline ────────────────────────────────────── */
-const ContinuousTimeline = ({ availableSlots, loading, onSlotSelect, selectedSlot, duration, openTime = 540, closeTime = 1260, date }) => {
-  const OPEN = openTime;
-  const CLOSE = closeTime;
-  const TOTAL = CLOSE - OPEN;
-  const isToday = date === getDateStr(0);
-  const isClosedDay = isTuesdayDateStr(date);
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-
-  if (loading) {
-    return <div style={{ color: T.text3, fontSize: 13, padding: '1rem 0' }}>Loading available slots...</div>;
-  }
-
-  // availableSlots from backend is now an array of { start, end, color }
-  const segments = availableSlots || [];
-
-  const isSlotValid = (mins) => {
-    if (isToday && mins < nowMins) return false;
-    if (mins + duration > CLOSE) return false;
-    return segments.some(s => s.color === 'GREEN' && mins >= s.start && mins < s.end);
-  };
-
-  return (
-    <div style={{ padding: '1rem 0' }}>
-      <div style={{ position: 'relative', height: 44, borderRadius: 8, background: '#e2e8f0', border: `1px solid ${T.br}`, overflow: 'hidden', cursor: isClosedDay ? 'not-allowed' : 'crosshair' }}
-        onClick={(e) => {
-          if (isClosedDay) {
-            return;
-          }
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left;
-          const p = x / rect.width;
-          let clickedMins = Math.round(OPEN + p * TOTAL);
-
-          if (clickedMins < OPEN) clickedMins = OPEN;
-          if (clickedMins > CLOSE - duration) clickedMins = CLOSE - duration;
-
-          const clickedSeg = segments.find(s => clickedMins >= s.start && clickedMins < s.end);
-
-          if (!clickedSeg || clickedSeg.color !== 'GREEN') {
-            return; // Grey block does nothing
-          }
-
-          if (isToday && clickedMins < nowMins) {
-            return;
-          }
-
-          if (isSlotValid(clickedMins)) {
-            onSlotSelect(clickedMins);
-          }
-        }}
-      >
-        {/* Segments — green for available, grey for booked */}
-        {segments.map((seg, i) => (
-          <div key={i} style={{
-            position: 'absolute', top: 0, height: '100%',
-            left: pct(seg.start, OPEN, TOTAL), width: pctW(seg.end - seg.start, TOTAL),
-            background: seg.color === 'GREEN'
-              ? 'rgba(90,158,111,0.55)'
-              : 'rgba(100,116,139,0.35)',
-            borderLeft: seg.color === 'GREEN'
-              ? '1px solid rgba(90,158,111,0.6)'
-              : '1px solid rgba(100,116,139,0.4)',
-            borderRight: seg.color === 'GREEN'
-              ? '1px solid rgba(90,158,111,0.6)'
-              : '1px solid rgba(100,116,139,0.4)',
-          }} />
-        ))}
-
-        {/* Past time greyed out overlay */}
-        {isToday && !isClosedDay && nowMins > OPEN && (
-          <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: 0,
-            width: pctW(Math.min(nowMins, CLOSE) - OPEN, TOTAL),
-            background: 'rgba(71, 85, 105, 0.55)',
-            backdropFilter: 'grayscale(100%)',
-            borderRight: `2px dashed ${T.text3}`,
-            zIndex: 10,
-            pointerEvents: 'none'
-          }} />
-        )}
-
-        {isClosedDay && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: 'rgba(71, 85, 105, 0.72)',
-            zIndex: 15,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            pointerEvents: 'none',
-          }}>
-            Closed On Tuesday
-          </div>
-        )}
-
-        {/* Selected slot indicator */}
-        {selectedSlot !== null && !isClosedDay && (
-          <div style={{
-            position: 'absolute', top: 0, height: '100%',
-            left: pct(selectedSlot, OPEN, TOTAL), width: pctW(duration, TOTAL),
-            background: T.gold,
-            border: '2px solid #fff',
-            zIndex: 20,
-            boxShadow: '0 0 10px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{ position: 'absolute', top: -20, left: '50%', transform: 'translateX(-50%)', background: T.gold, color: '#fff', fontSize: 10, padding: '2px 6px', borderRadius: 4, whiteSpace: 'nowrap', fontWeight: 700 }}>
-              {fmtTime(selectedSlot)}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: T.text3 }}>
-        <span>{fmtTime(OPEN)}</span>
-        <span>{fmtTime(OPEN + TOTAL / 2)}</span>
-        <span>{fmtTime(CLOSE)}</span>
-      </div>
-
-      {isClosedDay && (
-        <div style={{ marginTop: 8, fontSize: 11, color: T.text3 }}>
-          This shop is closed every Tuesday.
-        </div>
-      )}
-
-      {/* Fine-tune Minute Slider */}
-      {selectedSlot !== null && !isClosedDay && (
-        <div style={{ marginTop: '1.5rem', background: T.s2, padding: '1rem', borderRadius: 12, border: `1px solid ${T.br}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <label style={{ fontSize: 12, fontWeight: 600, color: T.text2 }}>Fine-tune Start Time (Minutes)</label>
-            <span style={{ fontSize: 13, fontWeight: 700, color: T.gold }}>{fmtTime(selectedSlot)}</span>
-          </div>
-          <input
-            type="range"
-            min={OPEN}
-            max={CLOSE - duration}
-            step={1}
-            value={selectedSlot}
-            onChange={(e) => {
-              const val = Number(e.target.value);
-              if (isSlotValid(val)) {
-                onSlotSelect(val);
-              } else {
-                // Snap to current value's closest valid GREEN minute
-                let closest = val;
-                let minDiff = Infinity;
-                segments.forEach(s => {
-                  if (s.color !== 'GREEN') return;
-                  if (val < s.start) {
-                    if (s.start - val < minDiff) { minDiff = s.start - val; closest = s.start; }
-                  } else if (val >= s.end) {
-                    // Maximum valid start in this block is s.end - 1
-                    // Actually, if a duration is fixed, max start is just before block end. Wait, s.end is the boundary of valid START times!
-                    // Yes, s.end is actually `lastT + 1`, meaning the highest slot start time is `s.end - 1`.
-                    if (val - (s.end - 1) < minDiff) { minDiff = val - (s.end - 1); closest = s.end - 1; }
-                  }
-                });
-
-                // Extra protection against past slots today
-                if (isToday && closest < nowMins && closest !== val) {
-                  closest = Math.max(closest, nowMins);
-                }
-
-                if (isSlotValid(closest)) onSlotSelect(closest);
-              }
-            }}
-            style={{ width: '100%', accentColor: T.gold, cursor: 'pointer' }}
-          />
-          <p style={{ fontSize: 10, color: T.text3, marginTop: 6 }}>
-            Slider only snaps to valid free segments calculated by the shop algorithm.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ─── Shop Card (Dashboard) ──────────────────────────────────── */
-const ShopCard = ({ shop, onBook, user }) => {
-  return (
-    <div style={{
-      background: T.surface, border: `1px solid ${T.br}`,
-      borderRadius: 16, padding: '1.25rem', display: 'flex',
-      flexDirection: 'column', gap: 10, transition: 'border-color 0.2s',
-      minHeight: SHOP_CARD_MIN_HEIGHT, height: '100%',
-    }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = T.gold + '55'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = T.br}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, minHeight: 104 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: "'Poppins',sans-serif", fontSize: 17, color: T.text, fontWeight: 400, ...ONE_LINE_ELLIPSIS }} title={shop.name}>{shop.name}</div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, color: T.text3, fontSize: 12, marginTop: 3 }}>
-            <FaMapMarkerAlt size={10} style={{ marginTop: 2, flexShrink: 0 }} />
-            <span style={{ ...TWO_LINE_CLAMP }} title={shop.address}>{shop.address}</span>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 6 }}>
-            {shop.services.slice(0, 3).map(svc => (
-              <span key={svc.id} style={{ fontSize: 10, background: T.s3, border: `1px solid ${T.br}`, borderRadius: 4, padding: '1px 6px', color: T.text2 }}>{svc.name}</span>
-            ))}
-            {shop.services.length > 3 && <span style={{ fontSize: 10, color: T.text3 }}>+{shop.services.length - 3} more</span>}
-          </div>
-        </div>
-        <Stars rating={shop.rating} />
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: T.text2 }}>
-        <FaClock size={11} style={{ color: T.green }} />
-        <span>Live availability appears after you choose your services</span>
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.text3 }}>
-        <FaScissors size={10} />
-        {fmtTime(shop.open)} – {fmtTime(shop.close)} &nbsp;·&nbsp; {shop.services.length} services
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-        <button
-          onClick={() => onBook(shop)}
-          style={{
-            flex: 1, padding: '0.6rem', borderRadius: 8,
-            background: `linear-gradient(135deg,${T.gold},#0f766e)`,
-            color: '#fff', fontWeight: 700, fontSize: 13, border: 'none',
-            cursor: 'pointer', fontFamily: "'Poppins',sans-serif",
-            transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          Book Now
-        </button>
-        {/* VERIFIED: hasHomeService auto-tags correctly */}
-        {(user?.gender || '').toLowerCase() === 'female' && shop.hasHomeService && (
-          <button
-            onClick={() => onBook({ ...shop, isHomeService: true })}
-            style={{
-              flex: 1, padding: '0.6rem', borderRadius: 8,
-              background: T.surface, border: `1px solid ${T.gold}`,
-              color: T.gold, fontWeight: 700, fontSize: 13,
-              cursor: 'pointer', fontFamily: "'Poppins',sans-serif",
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(13,148,136,0.05)'}
-            onMouseLeave={e => e.currentTarget.style.background = T.surface}
-          >
-            Home Service
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/* ─── Profile Dropdown ────────────────────────────────────────── */
-const ProfileDropdown = ({ open, onClose, onEdit }) => {
-  const navigate = useNavigate();
-  if (!open) return null;
-  const items = [
-    { label: 'Edit Profile', icon: '👤' },
-    { label: 'Logout', icon: '🚪', danger: true },
-  ];
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-      <div style={{
-        position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-        background: T.surface, border: `1px solid ${T.br2}`,
-        borderRadius: 12, padding: '6px', minWidth: 180, zIndex: 50,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.09)',
-      }}>
-        {items.map(it => (
-          <button key={it.label}
-            onClick={() => {
-              onClose();
-              if (it.label === 'Logout') {
-                setCustomerToken(null);
-                setCustomerProfileCache(null);
-                localStorage.removeItem('bookmycut_user');
-                localStorage.removeItem('customer_user');
-                navigate('/');
-                return;
-              }
-              if (it.label === 'Edit Profile' && onEdit) onEdit();
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              width: '100%', padding: '0.6rem 0.75rem', borderRadius: 8,
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: it.danger ? '#ef4444' : T.text, fontSize: 13,
-              fontFamily: "'Poppins',sans-serif", textAlign: 'left',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = T.s2}
-            onMouseLeave={e => e.currentTarget.style.background = 'none'}
-          >
-            <span>{it.icon}</span> {it.label}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-};
-
-/* ─── Dashboard Page ─────────────────────────────────────────── */
 const sortCustomerBookings = (bookings = []) => (
   [...bookings].sort((a, b) => {
     if (a.dateIso !== b.dateIso) {
@@ -602,7 +244,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [editForm, setEditForm] = useState(user);
-  const [currentLocation, setCurrentLocation] = useState(null);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
   const [bookingActionNotice, setBookingActionNotice] = useState(null);
@@ -683,7 +324,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     setIsLoadingLocation(true);
     try {
       const location = await getCurrentBrowserLocation();
-      setCurrentLocation(location);
+      setUserLocation(location);
       setEditForm((prev) => ({
         ...prev,
         homeLocation: location,
@@ -761,7 +402,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             if (payload.gender) jwtGender = payload.gender;
-          } catch (e) { }
+          } catch { /* ignore invalid JWT */ }
         }
 
         const gender = user.gender || jwtGender || 'Male';
@@ -855,7 +496,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     return () => {
       cancelled = true;
     };
-  }, [user.gender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, user.city, user.state, userLoading]);
+  }, [user.gender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, user.city, user.state, userLoading, user.homeLocation, userLocation]);
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -1257,14 +898,14 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
                         <div style={{ fontWeight: 700, color: T.text, fontSize: 15, ...ONE_LINE_ELLIPSIS }} title={b.shopName}>{b.shopName}</div>
                         <div style={{ fontSize: 11, color: T.text3, display: 'flex', alignItems: 'flex-start', gap: 4, marginTop: 2 }}>
                           <FaMapMarkerAlt size={9} style={{ marginTop: 2, flexShrink: 0 }} />
-                          <span style={{ ...ONE_LINE_ELLIPSIS }} title={b.shopAddress}>{b.shopAddress}</span>
+                          <span className="one-line-ellipsis" title={b.shopAddress}>{b.shopAddress}</span>
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         {b.verificationCode && (
                           <>
                             <div style={{ fontSize: 9, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Verification</div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: 'rgba(13,148,136,0.1)', border: `1px solid rgba(13,148,136,0.3)`, borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
+                            <div className="badge-verification">
                               {b.verificationCode}
                             </div>
                           </>
@@ -1274,9 +915,9 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', gap: 12 }}>
                       <div style={{ fontSize: 12, color: T.text2, flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                          <div style={{ fontWeight: 600, ...TWO_LINE_CLAMP }} title={b.service}>{b.service}</div>
+                          <div className="two-line-clamp" style={{ fontWeight: 600 }} title={b.service}>{b.service}</div>
                           {b.isHomeVisit && (
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#ec4899', background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
+                            <span className="badge-home">
                               Home Service
                             </span>
                           )}
@@ -1288,7 +929,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
 
                           return (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                              <span style={{ background: 'rgba(13,148,136,0.12)', color: T.gold, fontSize: 10, fontWeight: 700, borderRadius: 20, padding: '1px 8px', border: '1px solid rgba(13,148,136,0.25)' }}>
+                              <span className="badge-active">
                                 ACTIVE
                               </span>
                               <div style={{
@@ -1359,14 +1000,14 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
                         <div style={{ fontWeight: 700, color: T.text, fontSize: 15, ...ONE_LINE_ELLIPSIS }} title={b.shopName}>{b.shopName}</div>
                         <div style={{ fontSize: 11, color: T.text3, display: 'flex', alignItems: 'flex-start', gap: 4, marginTop: 2 }}>
                           <FaMapMarkerAlt size={9} style={{ marginTop: 2, flexShrink: 0 }} />
-                          <span style={{ ...ONE_LINE_ELLIPSIS }} title={b.shopAddress}>{b.shopAddress}</span>
+                          <span className="one-line-ellipsis" title={b.shopAddress}>{b.shopAddress}</span>
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
                         {b.verificationCode && (
                           <>
                             <div style={{ fontSize: 9, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Verification</div>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, background: 'rgba(13,148,136,0.1)', border: `1px solid rgba(13,148,136,0.3)`, borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
+                            <div className="badge-verification">
                               {b.verificationCode}
                             </div>
                           </>
@@ -1376,9 +1017,9 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', gap: 12 }}>
                       <div style={{ fontSize: 12, color: T.text2, flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                          <div style={{ fontWeight: 600, ...TWO_LINE_CLAMP }} title={b.service}>{b.service}</div>
+                          <div className="two-line-clamp" style={{ fontWeight: 600 }} title={b.service}>{b.service}</div>
                           {b.isHomeVisit && (
-                            <span style={{ fontSize: 9, fontWeight: 700, color: '#ec4899', background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
+                            <span className="badge-home">
                               Home Service
                             </span>
                           )}
@@ -1411,31 +1052,31 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
 
       {/* Edit Profile Modal */}
       {isEditingProfile && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}>
-          <form onSubmit={handleSaveProfile} style={{ background: T.surface, padding: '2rem', borderRadius: 16, width: 480, maxWidth: '90vw', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="modal-overlay">
+          <form onSubmit={handleSaveProfile} className="modal-content">
             <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: '1.25rem' }}>Personal Information</h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div className="form-grid">
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.text2, margin: '0 0 6px', textTransform: 'uppercase' }}>Full Name</label>
-                <input required value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: `1px solid ${T.br}`, outline: 'none', fontFamily: "'Poppins',sans-serif", fontSize: 13 }} />
+                <label className="form-label">Full Name</label>
+                <input required value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="form-input" />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.text2, margin: '0 0 6px', textTransform: 'uppercase' }}>Phone Number</label>
-                <input required type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: `1px solid ${T.br}`, outline: 'none', fontFamily: "'Poppins',sans-serif", fontSize: 13 }} />
+                <label className="form-label">Phone Number</label>
+                <input required type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="form-input" />
               </div>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.text2, margin: '0 0 6px', textTransform: 'uppercase' }}>Email Address</label>
-              <input type="email" required value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} style={{ width: '100%', padding: '0.6rem 0.8rem', borderRadius: 8, border: `1px solid ${T.br}`, outline: 'none', fontFamily: "'Poppins',sans-serif", fontSize: 13 }} />
+              <label className="form-label">Email Address</label>
+              <input type="email" required value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="form-input" />
               <p style={{ color: T.text3, fontSize: 11, marginTop: '0.25rem' }}>
                 Note: You'll need to login with your new email next time
               </p>
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: T.text2, margin: '0 0 6px', textTransform: 'uppercase' }}>Home Address</label>
+              <label className="form-label">Home Address</label>
 
               {/* Current Location Button */}
               <div style={{ marginBottom: '1rem' }}>
@@ -1494,8 +1135,8 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile} style={{ flex: 1, padding: '0.6rem', background: T.s2, color: T.text2, border: 'none', borderRadius: 8, cursor: isSavingProfile ? 'not-allowed' : 'pointer', fontWeight: 600, fontFamily: "'Poppins',sans-serif" }}>Cancel</button>
-              <button type="submit" disabled={isSavingProfile} style={{ flex: 1, padding: '0.6rem', background: `linear-gradient(135deg,${T.gold},#0f766e)`, color: '#fff', border: 'none', borderRadius: 8, cursor: isSavingProfile ? 'not-allowed' : 'pointer', fontWeight: 600, fontFamily: "'Poppins',sans-serif" }}>
+              <button type="button" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile} className="btn-cancel">Cancel</button>
+              <button type="submit" disabled={isSavingProfile} className="btn-save">
                 {isSavingProfile ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
@@ -1506,7 +1147,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
   );
 };
 
-/* ─── Shop Booking Page ──────────────────────────────────────── */
 const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [selectedDate, setSelectedDate] = useState(INITIAL_BOOKING_DATE);
@@ -1517,7 +1157,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [homeLocation, setHomeLocation] = useState(null);
   const [isLoadingHomeLocation, setIsLoadingHomeLocation] = useState(false);
   const [shopBarbers, setShopBarbers] = useState([]);
-  const [selectedBarber, setSelectedBarber] = useState(null);
+  const [selectedBarber] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingBarbers, setLoadingBarbers] = useState(false);
@@ -2035,7 +1675,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
 
       {/* Booking Confirmation Modal */}
       {confirmed && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}>
+        <div className="modal-overlay">
           <div style={{ background: T.surface, padding: '2rem', borderRadius: 16, width: 400, maxWidth: '90vw', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
             <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: '1.5rem' }}>Booking Confirmed! 🎉</h3>
             <div style={{ marginBottom: '1.5rem' }}>
@@ -2088,7 +1728,6 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   );
 };
 
-/* ─── Main App Component ────────────────────────────────────── */
 const CustomerDashboard = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [selectedShop, setSelectedShop] = useState(null);

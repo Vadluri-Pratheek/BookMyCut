@@ -328,7 +328,7 @@ const registerBarberOwner = async (req, res, next) => {
         state: shopState,
       },
       genderServed,
-      hasHomeService: hasHomeService || canOfferHomeServices, // VERIFIED: hasHomeService auto-tags correctly
+      hasHomeService: hasHomeService || canOfferHomeServices,
       services,
       openTime,
       closeTime,
@@ -424,7 +424,7 @@ const registerBarberStaff = async (req, res, next) => {
 
     if (normalizedCanOfferHomeServices && !shop.hasHomeService) {
       await Shop.findByIdAndUpdate(shop._id, { hasHomeService: true });
-      // VERIFIED: hasHomeService auto-tags correctly
+
     }
 
     const token = signToken({

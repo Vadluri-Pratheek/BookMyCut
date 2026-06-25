@@ -92,6 +92,18 @@ const ensureScheduleForBooking = async ({ barber, date, session }) => {
   );
 };
 
+const checkBarberSlotAvailability = ({ schedule, existingBookings, slotStart, slotEnd, shopLocation }) => {
+  if (!schedule || slotStart < schedule.workStart || slotEnd > schedule.workEnd) return false;
+  if ((schedule.breaks || []).some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) return false;
+
+  const hasConflict = existingBookings.some((b) => {
+    const { occupiedStart, occupiedEnd } = getOccupiedRange(b, shopLocation);
+    return hasOverlap(slotStart, slotEnd, occupiedStart, occupiedEnd);
+  });
+
+  return !hasConflict;
+};
+
 const isBookingWriteConflict = (error) =>
   error?.errorLabels?.includes('TransientTransactionError')
   || /writeconflict/i.test(error?.message || '');
@@ -381,7 +393,7 @@ const getShopAggregatedAvailability = async (req, res, next) => {
       minuteStatus.push({ t, color: isGreen ? 'GREEN' : 'GREY' });
     }
 
-    // VERIFIED: Availability engine correct
+
     // STEP 4 - Merge segments
     const aggregatedSlots = [];
     if (minuteStatus.length > 0) {
@@ -401,7 +413,7 @@ const getShopAggregatedAvailability = async (req, res, next) => {
       }
       aggregatedSlots.push({ start: currentStart, end: lastT + 1, color: currentColor });
     }
-    // VERIFIED: Slots API returns merged chart
+
 
     return res.status(200).json({
       success: true,
@@ -541,19 +553,17 @@ const createBooking = async (req, res, next) => {
 
         const schedule = await DaySchedule.findOne({ barberId: barber._id, date }).session(session);
         const effectiveSchedule = schedule || getBarberDefaultSchedule(barber);
-        if (!effectiveSchedule || slotStart < effectiveSchedule.workStart || slotEnd > effectiveSchedule.workEnd) continue;
-        if ((effectiveSchedule.breaks || []).some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
-
         const existingBookings = await Booking.find({ barberId: barber._id, date, status: 'upcoming' }).session(session);
-        const occStart = slotStart;
-        const occEnd = slotEnd;
 
-        const hasConflict = existingBookings.some((b) => {
-          const { occupiedStart, occupiedEnd } = getOccupiedRange(b, shop.location);
-          return hasOverlap(occStart, occEnd, occupiedStart, occupiedEnd);
+        const isAvailable = checkBarberSlotAvailability({
+          schedule: effectiveSchedule,
+          existingBookings,
+          slotStart,
+          slotEnd,
+          shopLocation: shop.location
         });
 
-        if (!hasConflict) {
+        if (isAvailable) {
           eligibleBarbers.push({
             id: barber._id,
             bookingCount: existingBookings.length,
@@ -578,20 +588,19 @@ const createBooking = async (req, res, next) => {
           date,
           session,
         });
-        if (!lockedSchedule || slotStart < lockedSchedule.workStart || slotEnd > lockedSchedule.workEnd) continue;
-        if ((lockedSchedule.breaks || []).some((b) => hasOverlap(slotStart, slotEnd, b.breakStart, b.breakEnd))) continue;
 
         // Re-verify chosen barber is still free
         const existingBookings = await Booking.find({ barberId: candidate.id, date, status: 'upcoming' }).session(session);
-        const occStart = slotStart;
-        const occEnd = slotEnd;
 
-        const hasConflict = existingBookings.some((b) => {
-          const { occupiedStart, occupiedEnd } = getOccupiedRange(b, shop.location);
-          return hasOverlap(occStart, occEnd, occupiedStart, occupiedEnd);
+        const isAvailable = checkBarberSlotAvailability({
+          schedule: lockedSchedule,
+          existingBookings,
+          slotStart,
+          slotEnd,
+          shopLocation: shop.location
         });
 
-        if (!hasConflict) {
+        if (isAvailable) {
           assignedBarberId = candidate.id;
           break; // Found a free candidate
         }
@@ -641,8 +650,8 @@ const createBooking = async (req, res, next) => {
     const travelBufferStart = slotStart;
     const travelBufferEnd = slotEnd;
     
-    // VERIFIED: Barber auto-assignment working
-    // VERIFIED: 4-digit verification code working
+
+
     const vCode = String(Math.floor(1000 + Math.random() * 9000));
 
     // STEP 5 - Create booking
@@ -865,7 +874,7 @@ const getMyBookingsCustomer = async (req, res, next) => {
       .sort({ date: -1, slotStartMinutes: -1 })
       .lean();
 
-    // VERIFIED: Booking dashboard loads from MongoDB
+
     return res.status(200).json({ success: true, data: bookings });
   } catch (error) {
     next(error);

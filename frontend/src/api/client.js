@@ -14,7 +14,7 @@ const getStoredJson = (key) => {
   try {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
-  } catch (_) {
+  } catch {
     localStorage.removeItem(key);
     return null;
   }
@@ -160,7 +160,7 @@ export async function seedBarberScheduleForUpcomingDays(days = 4) {
         breaks: normalizeScheduleBreaks(profile.data.generalBreaks),
       };
     }
-  } catch (_) {
+  } catch {
     /* fall back to legacy defaults */
   }
 

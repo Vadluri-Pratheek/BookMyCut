@@ -1,24 +1,14 @@
 import express from 'express';
-import { body, validationResult } from 'express-validator';
+import { body } from 'express-validator';
 
 import * as authController from '../controllers/auth.controller.js';
 import { protectCustomer, protectBarber } from '../middleware/auth.middleware.js';
 import { isValidUpiId } from '../utils/upi.js';
+import { validate } from '../middleware/validation.middleware.js';
 
 const router = express.Router();
 
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()[0].msg,
-    });
-  }
-
-  return next();
-};
 
 // PUBLIC
 router.post(

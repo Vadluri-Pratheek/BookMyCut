@@ -1,25 +1,15 @@
 import express from 'express';
-import { body, validationResult } from 'express-validator';
+import { body } from 'express-validator';
 
 import * as barberController from '../controllers/barber.controller.js';
 import { protectBarber } from '../middleware/auth.middleware.js';
 import { requireOwner } from '../middleware/role.middleware.js';
 import { isValidUpiId } from '../utils/upi.js';
+import { validate } from '../middleware/validation.middleware.js';
 
 const router = express.Router();
 
-const validate = (req, res, next) => {
-  const errors = validationResult(req);
 
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: errors.array()[0].msg,
-    });
-  }
-
-  return next();
-};
 
 // BARBER PROTECTED
 router.get('/profile', protectBarber, barberController.getBarberProfile);

@@ -53,7 +53,7 @@ const getNearbyShops = async (req, res, next) => {
       .select('name location genderServed hasHomeService rating reviewsCount services shopCode openTime closeTime banner')
       .lean();
 
-    // VERIFIED: Gender filter working correctly
+
 
     return res.status(200).json({ success: true, data: shops });
   } catch (error) {

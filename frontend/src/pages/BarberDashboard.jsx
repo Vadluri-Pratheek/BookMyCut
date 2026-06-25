@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   apiRequest,
   getBarberProfileCache,
@@ -14,9 +13,18 @@ import MapPicker from '../components/MapPicker';
 import ServiceCheckbox from '../components/ServiceCheckbox';
 import { SERVICES } from '../data/services';
 import { getLocalDateStr, getLocalDateWithOffset, isTuesdayDateStr } from '../utils/date';
-import { formatCoordinateAddress, normalizeLocation } from '../utils/location';
+
 import { openDirectionsFromCurrentLocation } from '../utils/navigation';
 import L from 'leaflet';
+
+import { Toast } from '../components/BarberToast';
+import { StatCard } from '../components/BarberStatCard';
+import { BookingCard } from '../components/BarberBookingCard';
+import { ContinuousTimeline } from '../components/BarberContinuousTimeline';
+import { BarberProfileDropdown } from '../components/BarberProfileDropdown';
+import { EditProfileModal } from '../components/BarberEditProfileModal';
+import { EditShopModal } from '../components/BarberEditShopModal';
+
 
 // Fix Leaflet paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -26,8 +34,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-/* ─── Inject styles ──────────────────────────────────────────── */
-const STYLE = `
+export const STYLE = `
   @keyframes slideIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:none; } }
   .bdb-stat-grid  { display:flex; gap:1rem; flex-wrap:wrap; }
   .bdb-split      { display:flex; gap:1.25rem; align-items:flex-start; }
@@ -46,42 +53,39 @@ const STYLE = `
   }
 `;
 
-/* ─── Theme ──────────────────────────────────────────────────── */
-const C = {
+export const C = {
   teal: '#ff7a00', tealD: '#ef6400', tealL: '#fff1e5',
   bg: '#eef2f7', white: '#ffffff', border: '#e4ebf3',
   text: '#0f172a', text2: '#66758d', text3: '#9eabc0',
 };
-const BOOKING_SYNC_STORAGE_KEY = 'bookmycut_booking_sync';
-const BOOKING_SYNC_EVENT_NAME = 'bookmycut_booking_sync';
+export const BOOKING_SYNC_STORAGE_KEY = 'bookmycut_booking_sync';
+export const BOOKING_SYNC_EVENT_NAME = 'bookmycut_booking_sync';
 
-/* ─── Timeline constants ─────────────────────────────────────── */
-const OPEN = 7 * 60;
-const CLOSE = 23 * 60;
-const TOTAL = CLOSE - OPEN;
-const DEFAULT_BARBER_WORK_START = 540;
-const DEFAULT_BARBER_WORK_END = 1260;
+export const OPEN = 7 * 60;
+export const CLOSE = 23 * 60;
+export const TOTAL = CLOSE - OPEN;
+export const DEFAULT_BARBER_WORK_START = 540;
+export const DEFAULT_BARBER_WORK_END = 1260;
 
-const pct = (m) => `${((m - OPEN) / TOTAL * 100).toFixed(3)}%`;
-const pctW = (d) => `${(d / TOTAL * 100).toFixed(3)}%`;
+export const pct = (m) => `${((m - OPEN) / TOTAL * 100).toFixed(3)}%`;
+export const pctW = (d) => `${(d / TOTAL * 100).toFixed(3)}%`;
 
-/* ─── Time utilities ─────────────────────────────────────────── */
-const minsToLabel = (m) => {
+export const minsToLabel = (m) => {
   const h = Math.floor(m / 60), mn = m % 60;
   const ap = h >= 12 ? 'PM' : 'AM';
   const hh = h > 12 ? h - 12 : h === 0 ? 12 : h;
   return `${hh}:${String(mn).padStart(2, '0')} ${ap}`;
 };
-const timeStrToMins = (t) => {
+export const timeStrToMins = (t) => {
   if (!t) return 0;
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 };
-const minsToTimeStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
-const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
+export const minsToTimeStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+export const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
+export const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
 
-const normalizeScheduleBreaks = (breaks = []) =>
+export const normalizeScheduleBreaks = (breaks = []) =>
   Array.isArray(breaks)
     ? breaks
       .map((item) => ({
@@ -92,7 +96,7 @@ const normalizeScheduleBreaks = (breaks = []) =>
       .filter((item) => Number.isFinite(item.breakStart) && Number.isFinite(item.breakEnd))
     : [];
 
-const getDefaultBarberSchedule = (barber) => ({
+export const getDefaultBarberSchedule = (barber) => ({
   workStart: Number.isFinite(Number(barber?.generalWorkStart))
     ? Number(barber.generalWorkStart)
     : DEFAULT_BARBER_WORK_START,
@@ -102,7 +106,7 @@ const getDefaultBarberSchedule = (barber) => ({
   breaks: normalizeScheduleBreaks(barber?.generalBreaks),
 });
 
-const getVisibleTimelineSegment = (startMins, endMins) => {
+export const getVisibleTimelineSegment = (startMins, endMins) => {
   const start = Number(startMins);
   const end = Number(endMins);
 
@@ -123,7 +127,7 @@ const getVisibleTimelineSegment = (startMins, endMins) => {
   };
 };
 
-const getVisibleWorkWindow = (schedule) => {
+export const getVisibleWorkWindow = (schedule) => {
   const workStart = Number(schedule?.workStart);
   const workEnd = Number(schedule?.workEnd);
 
@@ -148,27 +152,25 @@ const emitBookingSync = (payload = {}) => {
   const detail = { ...payload, timestamp: Date.now() };
   try {
     localStorage.setItem(BOOKING_SYNC_STORAGE_KEY, JSON.stringify(detail));
-  } catch (_) {
+  } catch {
     /* ignore sync persistence issues */
   }
   window.dispatchEvent(new CustomEvent(BOOKING_SYNC_EVENT_NAME, { detail }));
 };
 
-/* ─── Date utilities ─────────────────────────────────────────── */
-const getDs = (off = 0) => getLocalDateStr(off);
-const getDayLbl = (off) => {
+export const getDs = (off = 0) => getLocalDateStr(off);
+export const getDayLbl = (off) => {
   const d = getLocalDateWithOffset(off);
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
 };
 
-const DATE_PILLS = [0, 1, 2, 3].map(o => ({ offset: o, str: getDs(o), label: getDayLbl(o) }));
-const TODAY = getDs(0);
+export const DATE_PILLS = [0, 1, 2, 3].map(o => ({ offset: o, str: getDs(o), label: getDayLbl(o) }));
+export const TODAY = getDs(0);
 
-/* ─── Utils ──────────────────────────────────────────────────── */
-const AV = ['#ff7a00', '#ff9b45', '#f97316', '#ea580c', '#fb923c', '#fdba74'];
-const CURRENT_CUSTOMER_BUFFER_SECONDS = 60;
+export const AV = ['#ff7a00', '#ff9b45', '#f97316', '#ea580c', '#fb923c', '#fdba74'];
+export const CURRENT_CUSTOMER_BUFFER_SECONDS = 60;
 
-const getCatalogServicesForShopGender = (genderServed) => {
+export const getCatalogServicesForShopGender = (genderServed) => {
   if (genderServed === 'Male') {
     return SERVICES.filter((service) => service.gender === 'male' || service.gender === 'both');
   }
@@ -178,7 +180,7 @@ const getCatalogServicesForShopGender = (genderServed) => {
   return SERVICES;
 };
 
-const getServiceGenderSpecificForShop = (service, genderServed) => {
+export const getServiceGenderSpecificForShop = (service, genderServed) => {
   if (genderServed === 'Male' || genderServed === 'Female') {
     return genderServed;
   }
@@ -187,7 +189,7 @@ const getServiceGenderSpecificForShop = (service, genderServed) => {
   return 'Unisex';
 };
 
-const findCatalogServiceForShopService = (shopService, genderServed) => {
+export const findCatalogServiceForShopService = (shopService, genderServed) => {
   const allowedServices = getCatalogServicesForShopGender(genderServed);
   const exactMatches = allowedServices.filter(
     (service) =>
@@ -208,7 +210,7 @@ const findCatalogServiceForShopService = (shopService, genderServed) => {
   );
 };
 
-const getCurrentCustomerTimerRemaining = (booking) => {
+export const getCurrentCustomerTimerRemaining = (booking) => {
   if (!booking) return CURRENT_CUSTOMER_BUFFER_SECONDS;
 
   const startDateTime = new Date();
@@ -218,687 +220,13 @@ const getCurrentCustomerTimerRemaining = (booking) => {
   return Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
 };
 
-/* ─── Toast ──────────────────────────────────────────────────── */
-const Toast = ({ message, type }) => (
-  <div style={{
-    position: 'fixed', top: 20, right: 20, zIndex: 1000,
-    padding: '0.75rem 1.2rem', borderRadius: 10, fontSize: 13, fontWeight: 500,
-    background: type === 'success' ? '#fff1e5' : '#fee2e2',
-    border: `1px solid ${type === 'success' ? '#f8c48d' : '#fca5a5'}`,
-    color: type === 'success' ? '#c2410c' : '#991b1b',
-    boxShadow: '0 4px 16px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: 8,
-    animation: 'slideIn 0.2s ease', fontFamily: "'Poppins',sans-serif",
-  }}>{message}</div>
-);
-
-/* ─── StatCard ───────────────────────────────────────────────── */
-const StatCard = ({ icon, title, value, trend }) => {
-  const [hov, setHov] = useState(false);
-  return (
-    <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{
-      background: C.white, borderRadius: 12, padding: '0.8rem 1rem',
-      boxShadow: '0 1px 6px rgba(0,0,0,0.06)', border: `1px solid ${C.border}`,
-      borderLeft: hov ? `4px solid ${C.teal}` : '4px solid transparent',
-      transform: hov ? 'translateY(-2px)' : 'none',
-      transition: 'all 0.2s', flex: 1, minWidth: 0,
-    }}>
-      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.text3, marginBottom: 3 }}>{title}</div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 10, color: C.text3, marginTop: 4 }}>{trend}</div>
-    </div>
-  );
-};
-
-/* ─── BookingCard ────────────────────────────────────────────── */
-const BookingCard = ({ booking }) => {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0', borderBottom: `1px solid ${C.border}` }}>
-      <div style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: booking.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14 }}>
-        {booking.customer[0]}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-          <span style={{ fontWeight: 600, fontSize: 13, color: C.text }}>{booking.customer}</span>
-          {booking.verificationCode && (
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#fff', background: C.teal, borderRadius: 4, padding: '1px 6px', letterSpacing: '0.15em', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-              PIN: {booking.verificationCode}
-            </span>
-          )}
-          {booking.isHomeVisit && (
-            <span style={{ fontSize: 9, fontWeight: 700, color: '#ec4899', background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
-              🏠 Home Visit
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 11, color: C.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-          {booking.service}
-          {booking.isHomeVisit && booking.homeLocation && (
-            <button
-              onClick={() => openDirectionsFromCurrentLocation(booking.homeLocation)}
-              style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, border: `1px solid ${C.border}`, background: C.white, cursor: 'pointer', color: C.teal, display: 'flex', alignItems: 'center', gap: 4 }}
-            >
-              <FaMapMarkerAlt /> View Location
-            </button>
-          )}
-        </div>
-      </div>
-      <div style={{ flexShrink: 0 }}>
-        <span style={{ background: C.tealL, color: C.teal, fontWeight: 700, fontSize: 10, borderRadius: 20, padding: '2px 9px', border: `1px solid ${C.teal}33` }}>
-          {booking.timeLabel}
-        </span>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Continuous Timeline ────────────────────────────────────── */
-const ContinuousTimeline = ({ bookings, blockedSlots, schedule, date }) => {
-  const bks = (bookings[date] || []).filter((booking) => booking.status === 'upcoming');
-  const blocked = Array.isArray(schedule?.breaks)
-    ? schedule.breaks
-    : blockedSlots.filter((item) => item.date === date);
-  const isToday = date === TODAY;
-  const isClosedDay = isTuesdayDateStr(date);
-  const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
-  const visibleWorkWindow = getVisibleWorkWindow(schedule);
-  const outsideSegments = isClosedDay
-    ? [{ startMins: OPEN, endMins: CLOSE }]
-    : visibleWorkWindow
-      ? [
-        ...(visibleWorkWindow.start > OPEN ? [{ startMins: OPEN, endMins: visibleWorkWindow.start }] : []),
-        ...(visibleWorkWindow.end < CLOSE ? [{ startMins: visibleWorkWindow.end, endMins: CLOSE }] : []),
-      ]
-      : (schedule ? [{ startMins: OPEN, endMins: CLOSE }] : []);
-
-  return (
-    <div>
-      {/* Track */}
-      <div style={{ position: 'relative', height: 44, borderRadius: 8, background: '#f8fafc', border: `1px solid ${C.border}`, overflow: 'hidden' }}>
-
-        {/* Green base — available */}
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,122,0,0.16)', borderRight: '1px solid rgba(255,122,0,0.24)' }} />
-
-        {outsideSegments.map((segment, index) => {
-          const visibleSegment = getVisibleTimelineSegment(segment.startMins, segment.endMins);
-          if (!visibleSegment) return null;
-
-          return (
-            <div key={`outside-${index}`} style={{
-              position: 'absolute',
-              top: 0,
-              height: '100%',
-              left: visibleSegment.left,
-              width: visibleSegment.width,
-              background: 'rgba(148,163,184,0.3)',
-              borderLeft: '1px solid rgba(148,163,184,0.35)',
-              borderRight: '1px solid rgba(148,163,184,0.35)',
-            }} />
-          );
-        })}
-
-        {/* Booked segments (grey) */}
-        {!isClosedDay && bks.map((b, i) => {
-          const visibleSegment = getVisibleTimelineSegment(b.startMins, b.endMins);
-          if (!visibleSegment) return null;
-
-          return (
-            <div key={i} style={{
-              position: 'absolute', top: 0, height: '100%',
-              left: visibleSegment.left, width: visibleSegment.width,
-              background: 'rgba(100,116,139,0.45)',
-              borderLeft: '1px solid rgba(100,116,139,0.5)',
-              borderRight: '1px solid rgba(100,116,139,0.5)',
-            }} />
-          );
-        })}
-
-        {/* Blocked segments (amber) */}
-        {!isClosedDay && blocked.map((b, i) => {
-          const visibleSegment = getVisibleTimelineSegment(
-            b.startMins ?? b.breakStart,
-            b.endMins ?? b.breakEnd
-          );
-          if (!visibleSegment) return null;
-
-          return (
-            <div key={i} style={{
-              position: 'absolute', top: 0, height: '100%',
-              left: visibleSegment.left, width: visibleSegment.width,
-              background: 'rgba(201,124,46,0.38)',
-              borderLeft: '1px solid rgba(201,124,46,0.5)',
-              borderRight: '1px solid rgba(201,124,46,0.5)',
-            }} />
-          );
-        })}
-
-        {/* Past time greyed out overlay */}
-        {isToday && !isClosedDay && nowMins > OPEN && (
-          <div style={{
-            position: 'absolute', top: 0, bottom: 0, left: 0,
-            width: pctW(Math.min(nowMins, CLOSE) - OPEN),
-            background: 'rgba(226,232,240,0.6)', /* translucent slate background */
-            backdropFilter: 'grayscale(80%)',
-            borderRight: `2px dashed ${C.text3}`,
-            zIndex: 10,
-            pointerEvents: 'none'
-          }} />
-        )}
-
-        {isClosedDay && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            zIndex: 16,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            pointerEvents: 'none',
-          }}>
-            Closed On Tuesday
-          </div>
-        )}
-      </div>
-
-      {/* Time labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, fontSize: 10, color: C.text3 }}>
-        <span>{minsToLabel(OPEN)}</span>
-        <span>{minsToLabel(OPEN + TOTAL / 4)}</span>
-        <span>{minsToLabel(OPEN + TOTAL / 2)}</span>
-        <span>{minsToLabel(OPEN + TOTAL * 3 / 4)}</span>
-        <span>{minsToLabel(CLOSE)}</span>
-      </div>
-
-
-    </div>
-  );
-};
-
-/* ─── Form label ─────────────────────────────────────────────── */
-const Label = ({ children }) => (
-  <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: C.text2, marginBottom: 4 }}>
-    {children}
-  </div>
-);
-
-const inputSt = {
+export const inputSt = {
   width: '100%', padding: '0.48rem 0.7rem', borderRadius: 8,
   border: `1px solid ${C.border}`, fontSize: 13, color: C.text,
   fontFamily: "'Poppins',sans-serif", outline: 'none',
   background: C.white, boxSizing: 'border-box',
 };
 
-/* ─── Barber Profile Dropdown ──────────────────────────────────── */
-const BarberProfileDropdown = ({ open, onClose, user, onEditProfile, onEditShop }) => {
-  const navigate = useNavigate();
-  if (!open) return null;
-  const isOwner = user?.role === 'owner';
-  const items = [
-    { label: 'Edit Shop Details', icon: '🏪', disabled: !isOwner },
-    { label: 'Edit Profile', icon: '👤', disabled: false },
-    { label: 'Logout', icon: '🚪', danger: true },
-  ];
-  return (
-    <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
-      <div style={{
-        position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-        background: C.white, border: `1px solid ${C.border}`,
-        borderRadius: 12, padding: '6px', minWidth: 200, zIndex: 50,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.09)',
-      }}>
-        {items.map(it => (
-          <button key={it.label}
-            disabled={it.disabled}
-            onClick={() => {
-              if (it.disabled) return;
-              onClose();
-              if (it.label === 'Logout') {
-                setBarberToken(null);
-                setBarberProfileCache(null);
-                localStorage.removeItem('barber_user');
-                navigate('/');
-                return;
-              }
-              if (it.label === 'Edit Profile') onEditProfile();
-              if (it.label === 'Edit Shop Details') onEditShop();
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              width: '100%', padding: '0.6rem 0.75rem', borderRadius: 8,
-              background: 'none', border: 'none', cursor: it.disabled ? 'not-allowed' : 'pointer',
-              color: it.disabled ? C.text3 : (it.danger ? '#dc2626' : C.text),
-              fontSize: 13, fontFamily: "'Poppins',sans-serif", textAlign: 'left',
-              transition: 'background 0.15s',
-            }}
-            onMouseEnter={e => { if (!it.disabled) e.currentTarget.style.background = C.bg; }}
-            onMouseLeave={e => { if (!it.disabled) e.currentTarget.style.background = 'none'; }}
-          >
-            <span>{it.icon}</span>
-            <span style={{ flex: 1 }}>{it.label}</span>
-            {it.label === 'Edit Shop Details' && !isOwner && <span style={{ fontSize: 10, padding: '2px 6px', background: C.bg, borderRadius: 4, border: `1px solid ${C.border}` }}>Owner Only</span>}
-          </button>
-        ))}
-      </div>
-    </>
-  );
-};
-
-/* ─── Edit Profile Modal ────────────────────────────────────── */
-const EditProfileModal = ({ open, onClose, user, onSave }) => {
-  const [form, setForm] = useState({ name: user.name || '', phone: user.phone || '', upiId: user.upiId || '' });
-  const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-
-    setForm({
-      name: user.name || '',
-      phone: user.phone || '',
-      upiId: user.upiId || '',
-    });
-  }, [open, user.name, user.phone, user.upiId]);
-
-  if (!open) return null;
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (form.upiId && !upiRe.test(normalizeUpiId(form.upiId))) {
-      alert('Enter a valid UPI ID');
-      return;
-    }
-    setBusy(true);
-    try {
-      const res = await apiRequest('/barbers/profile', {
-        method: 'PUT',
-        auth: 'barber',
-        body: {
-          ...form,
-          upiId: normalizeUpiId(form.upiId),
-        },
-      });
-      onSave(res.data);
-      onClose();
-    } catch (err) {
-      alert(err.message || 'Update failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: C.white, borderRadius: 16, width: '100%', maxWidth: 400, padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: '1rem' }}>Edit Profile</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <Label>Full Name</Label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputSt} required />
-          </div>
-          <div>
-            <Label>Phone Number</Label>
-            <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} style={inputSt} required />
-          </div>
-          <div>
-            <Label>UPI ID</Label>
-            <input value={form.upiId} onChange={e => setForm({ ...form, upiId: e.target.value })} style={inputSt} placeholder="yourname@bank" />
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Cancel</button>
-            <button type="submit" disabled={busy} style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${C.teal},${C.tealD})`, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
-              {busy ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Edit Shop Modal ─────────────────────────────────────── */
-const EditShopModal = ({ open, onClose, user, onSave }) => {
-  const [form, setForm] = useState({
-    name: user.shopName,
-    address: user.shopAddress,
-    city: user.shopCity || '',
-    state: user.shopState || '',
-    lat: user.shopLat ?? null,
-    lng: user.shopLng ?? null,
-    openTime: user.openTime || 540,
-    closeTime: user.closeTime || 1260,
-    genderServed: 'Unisex',
-  });
-  const [busy, setBusy] = useState(false);
-  const [loadingShop, setLoadingShop] = useState(false);
-  const [selectedServiceIds, setSelectedServiceIds] = useState([]);
-  const [loadedServices, setLoadedServices] = useState([]);
-  const [shopBarbers, setShopBarbers] = useState([]);
-  const [loadingBarbers, setLoadingBarbers] = useState(false);
-  const [removingBarberId, setRemovingBarberId] = useState(null);
-
-  useEffect(() => {
-    if (open) {
-      setForm({
-        name: user.shopName,
-        address: user.shopAddress,
-        city: user.shopCity || '',
-        state: user.shopState || '',
-        lat: user.shopLat ?? null,
-        lng: user.shopLng ?? null,
-        openTime: user.openTime || 540,
-        closeTime: user.closeTime || 1260,
-        genderServed: 'Unisex',
-      });
-      setLoadedServices([]);
-      setSelectedServiceIds([]);
-      setShopBarbers([]);
-      setRemovingBarberId(null);
-    }
-  }, [open, user]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    let cancelled = false;
-
-    const loadShopDetails = async () => {
-      setLoadingShop(true);
-      setLoadingBarbers(true);
-      try {
-        const [shopRes, barbersRes] = await Promise.all([
-          apiRequest('/shops/my', {
-            method: 'GET',
-            auth: 'barber',
-          }),
-          apiRequest('/barbers/staff', {
-            method: 'GET',
-            auth: 'barber',
-          }),
-        ]);
-
-        if (cancelled || !shopRes?.data) return;
-
-        const shop = shopRes.data;
-        const genderServed = shop.genderServed || 'Unisex';
-        const services = Array.isArray(shop.services) ? shop.services : [];
-        const mappedServiceIds = services
-          .map((service) => findCatalogServiceForShopService(service, genderServed)?.id)
-          .filter(Boolean);
-
-        setForm({
-          name: shop.name || user.shopName,
-          address: shop.location?.address || user.shopAddress,
-          city: shop.location?.city || user.shopCity || '',
-          state: shop.location?.state || user.shopState || '',
-          lat: shop.location?.coordinates?.[1] ?? user.shopLat ?? null,
-          lng: shop.location?.coordinates?.[0] ?? user.shopLng ?? null,
-          openTime: shop.openTime || 540,
-          closeTime: shop.closeTime || 1260,
-          genderServed,
-        });
-        setLoadedServices(services);
-        setSelectedServiceIds(mappedServiceIds);
-        setShopBarbers(Array.isArray(barbersRes?.data) ? barbersRes.data : []);
-      } catch (err) {
-        if (!cancelled) {
-          alert(err.message || 'Failed to load shop details');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingShop(false);
-          setLoadingBarbers(false);
-        }
-      }
-    };
-
-    loadShopDetails();
-    return () => { cancelled = true; };
-  }, [open, user]);
-
-  if (!open) return null;
-
-  const handleMapSelect = async (loc) => {
-    const nextLocation = normalizeLocation(loc, {
-      address: formatCoordinateAddress(loc?.lat, loc?.lng),
-    });
-
-    if (!nextLocation) {
-      return;
-    }
-
-    setForm((prev) => ({
-      ...prev,
-      lat: nextLocation.lat,
-      lng: nextLocation.lng,
-      address: nextLocation.address || prev.address,
-      city: nextLocation.city || prev.city,
-      state: nextLocation.state || prev.state,
-    }));
-  };
-
-  const handleRemoveBarber = async (barberId) => {
-    const barber = shopBarbers.find((item) => item._id === barberId);
-    if (!barber) return;
-
-    const confirmed = window.confirm(`Remove ${barber.name} from this shop?`);
-    if (!confirmed) return;
-
-    setRemovingBarberId(barberId);
-    try {
-      await apiRequest(`/barbers/staff/${barberId}`, {
-        method: 'DELETE',
-        auth: 'barber',
-      });
-      setShopBarbers((prev) => prev.filter((item) => item._id !== barberId));
-    } catch (err) {
-      alert(err.message || 'Failed to remove barber');
-    } finally {
-      setRemovingBarberId(null);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      const catalogServices = getCatalogServicesForShopGender(form.genderServed);
-      const existingServicesById = new Map(
-        loadedServices
-          .map((service) => {
-            const matchedService = findCatalogServiceForShopService(service, form.genderServed);
-            return matchedService ? [matchedService.id, service] : null;
-          })
-          .filter(Boolean)
-      );
-      const servicesPayload = selectedServiceIds
-        .map((serviceId) => {
-          const existingService = existingServicesById.get(serviceId);
-          if (existingService) {
-            return existingService;
-          }
-
-          const catalogService = catalogServices.find((service) => service.id === serviceId);
-          if (!catalogService) return null;
-
-          return {
-            name: catalogService.name,
-            durationMinutes: catalogService.duration,
-            price: Math.max(50, Math.round(catalogService.duration * 8)),
-            genderSpecific: getServiceGenderSpecificForShop(catalogService, form.genderServed),
-          };
-        })
-        .filter(Boolean);
-
-      const res = await apiRequest('/shops/my', {
-        method: 'PUT',
-        auth: 'barber',
-        body: {
-          ...form,
-          services: servicesPayload,
-        },
-      });
-      onSave(res.data);
-      onClose();
-    } catch (err) {
-      alert(err.message || 'Update failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div style={{ background: C.white, borderRadius: 16, width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-        <h2 style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: '1rem' }}>Edit Shop Details</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.text }}>Shop Details</div>
-          <div>
-            <Label>Shop Name</Label>
-            <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inputSt} required />
-          </div>
-          <div>
-            <Label>Shop Address</Label>
-            <textarea value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} style={{ ...inputSt, height: 60, resize: 'none' }} required />
-          </div>
-          <div>
-            <Label>Shop Location</Label>
-            <div style={{ height: 220, borderRadius: 12, overflow: 'hidden', border: `1px solid ${C.border}` }}>
-              <MapPicker
-                selected={form.lat != null && form.lng != null ? {
-                  lat: Number(form.lat),
-                  lng: Number(form.lng),
-                  address: form.address || 'Selected location',
-                } : null}
-                onLocationSelect={handleMapSelect}
-              />
-            </div>
-            {form.lat != null && form.lng != null && (
-              <div style={{ marginTop: 6, fontSize: 11, color: C.text3 }}>
-                Coordinates: {Number(form.lat).toFixed(5)}, {Number(form.lng).toFixed(5)}
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <Label>Open Time</Label>
-              <select value={form.openTime} onChange={e => setForm({ ...form, openTime: Number(e.target.value) })} style={inputSt}>
-                {Array.from({ length: 13 }).map((_, i) => {
-                  const m = (8 + i) * 60;
-                  return <option key={m} value={m}>{minsToLabel(m)}</option>;
-                })}
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <Label>Close Time</Label>
-              <select value={form.closeTime} onChange={e => setForm({ ...form, closeTime: Number(e.target.value) })} style={inputSt}>
-                {Array.from({ length: 13 }).map((_, i) => {
-                  const m = (17 + i) * 60;
-                  return <option key={m} value={m}>{minsToLabel(m)}</option>;
-                })}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginTop: '0.25rem' }}>Services</div>
-          <div>
-            <Label>Services</Label>
-            {loadingShop ? (
-              <div style={{ fontSize: 12, color: C.text3 }}>Loading services...</div>
-            ) : (
-              <>
-                <div style={{ fontSize: 11, color: C.text3, marginBottom: 8 }}>
-                  Based on {form.genderServed === 'Unisex' ? 'Unisex' : form.genderServed} shop services.
-                </div>
-                <div className="services-grid">
-                  {getCatalogServicesForShopGender(form.genderServed).map((service) => (
-                    <ServiceCheckbox
-                      key={service.id}
-                      service={service}
-                      checked={selectedServiceIds.includes(service.id)}
-                      onChange={() => setSelectedServiceIds((prev) =>
-                        prev.includes(service.id)
-                          ? prev.filter((id) => id !== service.id)
-                          : [...prev, service.id]
-                      )}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginTop: '0.25rem' }}>Barbers</div>
-          <div>
-            <Label>Joined Barbers</Label>
-            {loadingBarbers ? (
-              <div style={{ fontSize: 12, color: C.text3 }}>Loading barbers...</div>
-            ) : shopBarbers.length === 0 ? (
-              <div style={{ fontSize: 12, color: C.text3, padding: '0.75rem', borderRadius: 10, background: '#f8fafc', border: `1px solid ${C.border}` }}>
-                No joined barbers yet.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {shopBarbers.map((barber) => (
-                  <div
-                    key={barber._id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      padding: '0.75rem',
-                      borderRadius: 10,
-                      border: `1px solid ${C.border}`,
-                      background: '#f8fafc',
-                    }}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{barber.name}</div>
-                      <div style={{ fontSize: 11, color: C.text3 }}>{barber.email}</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveBarber(barber._id)}
-                      disabled={removingBarberId === barber._id}
-                      style={{
-                        flexShrink: 0,
-                        padding: '0.45rem 0.7rem',
-                        borderRadius: 8,
-                        border: '1px solid #fca5a5',
-                        background: '#fee2e2',
-                        color: '#dc2626',
-                        cursor: removingBarberId === barber._id ? 'not-allowed' : 'pointer',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        fontFamily: "'Poppins',sans-serif",
-                      }}
-                    >
-                      {removingBarberId === barber._id ? 'Removing...' : 'Remove'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Cancel</button>
-            <button type="submit" disabled={busy || loadingShop || selectedServiceIds.length === 0} style={{ flex: 1, padding: '0.7rem', borderRadius: 8, border: 'none', background: `linear-gradient(135deg,${C.teal},${C.tealD})`, color: '#fff', cursor: busy || loadingShop || selectedServiceIds.length === 0 ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}>
-              {busy ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-/* ════════════════════════════════════════════════════════════════
-   BARBER DASHBOARD
-════════════════════════════════════════════════════════════════ */
 const BarberDashboard = () => {
   const cachedBarberProfile = getBarberProfileCache();
   const [selectedDate, setSelectedDate] = useState(DATE_PILLS[0]);
@@ -936,9 +264,9 @@ const BarberDashboard = () => {
     generalWorkEnd: cachedBarberProfile?.generalWorkEnd ?? DEFAULT_BARBER_WORK_END,
     generalBreaks: Array.isArray(cachedBarberProfile?.generalBreaks) ? cachedBarberProfile.generalBreaks : [],
   });
-  const [viewingLocation, setViewingLocation] = useState(null);
 
-  const navigate = useNavigate();
+
+
   const getScheduleForDate = useCallback(
     (date) => schedulesByDate[date] || getDefaultBarberSchedule(user),
     [schedulesByDate, user]
@@ -1093,7 +421,7 @@ const BarberDashboard = () => {
 
       try {
         handleIncomingBookingSync(JSON.parse(event.newValue));
-      } catch (_) {
+      } catch {
         loadBookings();
       }
     };
@@ -1102,15 +430,14 @@ const BarberDashboard = () => {
     window.addEventListener('bmc_bookings_update', loadBookings);
     window.addEventListener(BOOKING_SYNC_EVENT_NAME, handleBookingSyncEvent);
     window.addEventListener('storage', handleBookingSyncStorage);
-    const mapHandler = (e) => setViewingLocation(e.detail);
-    window.addEventListener('open_map', mapHandler);
+
     const refreshInterval = setInterval(loadBookings, 10000);
 
     return () => {
       window.removeEventListener('bmc_bookings_update', loadBookings);
       window.removeEventListener(BOOKING_SYNC_EVENT_NAME, handleBookingSyncEvent);
       window.removeEventListener('storage', handleBookingSyncStorage);
-      window.removeEventListener('open_map', mapHandler);
+
       clearInterval(refreshInterval);
     };
   }, [loadBookings]);
@@ -1233,27 +560,6 @@ const BarberDashboard = () => {
     setToast({ message: '📋 Block form pre-filled from active slot', type: 'success' });
   };
 
-  // Cancel the currently active booking
-  const cancelCurrentBooking = () => {
-    if (!currentBooking) return;
-    setBookings(prev => {
-      const u = {};
-      for (const [d, bs] of Object.entries(prev)) u[d] = bs.filter(b => b.id !== currentBooking.id);
-      return u;
-    });
-    setSlotTimer(60);
-    setTimerExpired(false);
-    setToast({ message: '✅ Booking cancelled', type: 'success' });
-  };
-
-  const cancelBooking = (id) => {
-    setBookings(prev => {
-      const u = {};
-      for (const [d, bs] of Object.entries(prev)) u[d] = bs.filter(b => b.id !== id);
-      return u;
-    });
-    setToast({ message: '✅ Booking cancelled', type: 'success' });
-  };
 
   const cancelCurrentBookingApi = async () => {
     if (!currentBooking?.apiBookingId) return;
@@ -1404,7 +710,7 @@ const BarberDashboard = () => {
           <p style={{ fontSize: 12, color: C.text2, marginTop: 2 }}>Manage your schedule, block slots, and track bookings</p>
         </div>
 
-        {/* ── STAT CARDS ── */}
+        {}
         <div className="bdb-stat-grid" style={{ marginBottom: '1.5rem' }}>
           <StatCard icon="📅" title="Total Bookings Today" value={String(todayBookings.length)} trend={`Completed: ${completedToday.length}`} />
           <StatCard icon="⏰" title="Upcoming Appointments" value={String(upcomingCount)} trend="Next: Check timeline" />
@@ -1412,7 +718,7 @@ const BarberDashboard = () => {
           <StatCard icon="💰" title="Earnings Today" value={`₹${totalEarningsToday}`} trend="From completed bookings" />
         </div>
 
-        {/* ── SPLIT LAYOUT ── */}
+        {}
         <div className="bdb-split">
 
           {/* ════ LEFT: Block Time Slot ════ */}
@@ -1506,7 +812,7 @@ const BarberDashboard = () => {
               />
             </div>
 
-            {/* ── Current Customer ── */}
+            {}
             <div>
               <h3 style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: '0.7rem', display: 'flex', alignItems: 'center', gap: 7 }}>
                 🪑 Current Customer
@@ -1529,7 +835,7 @@ const BarberDashboard = () => {
                           </span>
                         )}
                         {currentBooking.isHomeVisit && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#ec4899', background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: 4, padding: '2px 6px', letterSpacing: '0.05em' }}>
+                          <span className="badge-home">
                             🏠 Home Visit
                           </span>
                         )}
