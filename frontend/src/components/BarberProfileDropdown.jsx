@@ -1,15 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setBarberToken, setBarberProfileCache } from '../api/client';
-import { C } from '../pages/BarberDashboard';
+import { useBarberTheme } from '../hooks/useTheme';
 
-export const BarberProfileDropdown = ({ open, onClose, user, onEditProfile, onEditShop }) => {
+export const BarberProfileDropdown = ({ open, onClose, user, onEditShop }) => {
+  const C = useBarberTheme();
   const navigate = useNavigate();
   if (!open) return null;
   const isOwner = user?.role === 'owner';
   const items = [
-    { label: 'Edit Shop Details', icon: '🏪', disabled: !isOwner },
-    { label: 'Edit Profile', icon: '👤', disabled: false },
+    { label: 'Edit Shop Details', icon: '💈', disabled: !isOwner },
     { label: 'Logout', icon: '🚪', danger: true },
   ];
   return (
@@ -34,7 +34,6 @@ export const BarberProfileDropdown = ({ open, onClose, user, onEditProfile, onEd
                 navigate('/');
                 return;
               }
-              if (it.label === 'Edit Profile') onEditProfile();
               if (it.label === 'Edit Shop Details') onEditShop();
             }}
             style={{

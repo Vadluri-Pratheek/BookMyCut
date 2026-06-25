@@ -64,7 +64,7 @@ const LoginForm = ({ onSwitch, onLogin }) => {
     setErrors({});
     setResetNotice('');
     try {
-      const res = await apiRequest('/auth/customer/login', {
+      const res = await apiRequest('/auth/login', {
         method: 'POST',
         auth: 'none',
         body: { email: form.email.trim(), password: form.password },
@@ -81,8 +81,8 @@ const LoginForm = ({ onSwitch, onLogin }) => {
   if (showForgot) {
     return (
       <ForgotPasswordForm
-        requestPath="/auth/customer/forgot-password"
-        resetPath="/auth/customer/reset-password"
+        requestPath="/auth/forgot-password"
+        resetPath="/auth/reset-password"
         accountLabel="customer"
         emailPlaceholder="you@email.com"
         onBack={() => setShowForgot(false)}
@@ -137,8 +137,7 @@ const LoginForm = ({ onSwitch, onLogin }) => {
 const SignupForm = ({ onSwitch, onLogin }) => {
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
-    password: '', confirmPassword: '', gender: '',
-    homeLocation: null,
+    password: '', confirmPassword: '',
     terms: false,
   });
   const [errors, setErrors] = useState({});
@@ -146,7 +145,6 @@ const SignupForm = ({ onSwitch, onLogin }) => {
 
   const set = (field) => (e) =>
     setForm((f) => ({ ...f, [field]: e.target.value }));
-  const setGender = (g) => setForm((f) => ({ ...f, gender: g }));
   const setTerms = () => setForm((f) => ({ ...f, terms: !f.terms }));
 
   const validate = () => {
@@ -157,11 +155,9 @@ const SignupForm = ({ onSwitch, onLogin }) => {
     if (!form.phone) errs.phone = 'Phone number is required';
     else if (!phoneRe.test(form.phone)) errs.phone = 'Enter a valid 10-digit Indian mobile number';
     if (!form.password) errs.password = 'Password is required';
-    else if (form.password.length < 8) errs.password = 'Minimum 8 characters';
+    else if (form.password.length < 6) errs.password = 'Minimum 6 characters';
     if (!form.confirmPassword) errs.confirmPassword = 'Please confirm your password';
     else if (form.password !== form.confirmPassword) errs.confirmPassword = 'Passwords do not match';
-    if (!form.gender) errs.gender = 'Please select a gender';
-    if (!form.homeLocation) errs.homeLocation = 'Please select your current location on the map';
     if (!form.terms) errs.terms = 'You must agree to Terms & Conditions';
     return errs;
   };
@@ -172,9 +168,8 @@ const SignupForm = ({ onSwitch, onLogin }) => {
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setBusy(true);
     setErrors({});
-    const genderApi = form.gender === 'female' ? 'Female' : 'Male';
     try {
-      const res = await apiRequest('/auth/customer/register', {
+      const res = await apiRequest('/auth/register', {
         method: 'POST',
         auth: 'none',
         body: {
@@ -182,8 +177,7 @@ const SignupForm = ({ onSwitch, onLogin }) => {
           email: form.email.trim(),
           password: form.password,
           phone: form.phone.trim(),
-          gender: genderApi,
-          homeLocation: form.homeLocation,
+          role: 'customer',
         },
       });
       persistCustomerSession(res.data);
@@ -221,48 +215,6 @@ const SignupForm = ({ onSwitch, onLogin }) => {
         value={form.confirmPassword} onChange={set('confirmPassword')}
         error={errors.confirmPassword} required autoComplete="new-password"
       />
-
-      <div className="input-group">
-        <label>Current Location <span style={{ color: 'var(--text-error)' }}>*</span></label>
-        <MapPicker
-          selected={form.homeLocation}
-          onLocationSelect={(location) => {
-            setForm((f) => ({ ...f, homeLocation: location }));
-            setErrors((prev) => {
-              if (!prev.homeLocation) {
-                return prev;
-              }
-              const next = { ...prev };
-              delete next.homeLocation;
-              return next;
-            });
-          }}
-        />
-        {form.homeLocation && (
-          <p className="helper-text" style={{ marginTop: '-0.15rem' }}>
-            Saved location: {form.homeLocation.address}
-          </p>
-        )}
-        {errors.homeLocation && <span className="error-msg">⚠ {errors.homeLocation}</span>}
-      </div>
-
-      {/* Gender */}
-      <div className="input-group">
-        <label>Gender <span style={{ color: 'var(--text-error)' }}>*</span></label>
-        <div className="gender-group">
-          {['Male', 'Female'].map((g) => (
-            <label
-              key={g}
-              className={`gender-radio ${form.gender === g.toLowerCase() ? 'active' : ''}`}
-              onClick={() => setGender(g.toLowerCase())}
-            >
-              <input type="radio" name="cust-gender" value={g.toLowerCase()} readOnly />
-              {g}
-            </label>
-          ))}
-        </div>
-        {errors.gender && <span className="error-msg">⚠ {errors.gender}</span>}
-      </div>
 
       {/* Terms */}
       <label className="check-label">

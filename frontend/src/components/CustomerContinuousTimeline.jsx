@@ -1,8 +1,10 @@
 import React from 'react';
-import { T, pct, pctW, fmtTime, getDateStr } from '../pages/CustomerDashboard';
+import { pct, pctW, fmtTime, getDateStr } from '../pages/CustomerDashboardUtils';
 import { isTuesdayDateStr } from '../utils/date';
+import { useTheme } from '../hooks/useTheme';
 
 export const ContinuousTimeline = ({ availableSlots, loading, onSlotSelect, selectedSlot, duration, openTime = 540, closeTime = 1260, date }) => {
+  const T = useTheme();
   const OPEN = openTime;
   const CLOSE = closeTime;
   const TOTAL = CLOSE - OPEN;

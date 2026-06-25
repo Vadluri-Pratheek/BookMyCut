@@ -148,7 +148,7 @@ export async function seedBarberScheduleForUpcomingDays(days = 4) {
   };
 
   try {
-    const profile = await apiRequest('/auth/barber/me', {
+    const profile = await apiRequest('/auth/me', {
       method: 'GET',
       auth: 'barber',
     });

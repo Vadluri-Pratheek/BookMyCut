@@ -5,14 +5,9 @@ import CustomerAuthPage   from './pages/CustomerAuthPage';
 import BarberAuthPage     from './pages/BarberAuthPage';
 import CustomerDashboard  from './pages/CustomerDashboard';
 import BarberDashboard    from './pages/BarberDashboard';
-import { getCustomerToken, getBarberToken } from './api/client';
+import { getBarberToken } from './api/client';
 import './index.css';
 import './App.css';
-
-/** Redirect to customer auth if no token is present */
-const ProtectedCustomerRoute = ({ children }) => {
-  return getCustomerToken() ? children : <Navigate to="/auth/customer" replace />;
-};
 
 /** Redirect to barber auth if no token is present */
 const ProtectedBarberRoute = ({ children }) => {
@@ -25,7 +20,7 @@ const App = () => (
       <Route path="/"                 element={<RoleSelectionPage />} />
       <Route path="/auth/customer"    element={<CustomerAuthPage />} />
       <Route path="/auth/barber"      element={<BarberAuthPage />} />
-      <Route path="/dashboard"        element={<ProtectedCustomerRoute><CustomerDashboard /></ProtectedCustomerRoute>} />
+      <Route path="/dashboard"        element={<CustomerDashboard />} />
       <Route path="/barber/dashboard" element={<ProtectedBarberRoute><BarberDashboard /></ProtectedBarberRoute>} />
       <Route path="*"                 element={<Navigate to="/" replace />} />
     </Routes>

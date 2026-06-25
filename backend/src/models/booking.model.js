@@ -20,9 +20,9 @@ const bookingSchema = new mongoose.Schema(
   {
     bookingCode: { type: String, unique: true, required: true },
     verificationCode: { type: String, required: true },
-    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
-    barberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Barber', required: true },
+    barberId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     serviceName: { type: String, required: true, trim: true },
     selectedServices: { type: [selectedServiceSchema], default: [] },
     serviceDuration: { type: Number, required: true },

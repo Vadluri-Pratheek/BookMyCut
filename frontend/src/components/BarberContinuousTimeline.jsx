@@ -1,8 +1,10 @@
 import React from 'react';
-import { C, OPEN, CLOSE, TOTAL, TODAY, pctW, minsToLabel, getVisibleWorkWindow, getVisibleTimelineSegment } from '../pages/BarberDashboard';
+import { OPEN, CLOSE, TOTAL, TODAY, pctW, minsToLabel, getVisibleWorkWindow, getVisibleTimelineSegment } from '../pages/BarberDashboardUtils';
 import { isTuesdayDateStr } from '../utils/date';
+import { useBarberTheme } from '../hooks/useTheme';
 
 export const ContinuousTimeline = ({ bookings, blockedSlots, schedule, date }) => {
+  const C = useBarberTheme();
   const bks = (bookings[date] || []).filter((booking) => booking.status === 'upcoming');
   const blocked = Array.isArray(schedule?.breaks)
     ? schedule.breaks

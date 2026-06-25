@@ -11,7 +11,7 @@ const breakSchema = new mongoose.Schema(
 
 const dayScheduleSchema = new mongoose.Schema(
   {
-    barberId: { type: mongoose.Schema.Types.ObjectId, ref: 'Barber', required: true },
+    barberId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
     date: { type: String, required: true },
     workStart: { type: Number, required: true },

@@ -2,8 +2,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-import Customer from '../models/customer.model.js';
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 import Shop from '../models/shop.model.js';
 import {
   getBarberDefaultSchedule,
@@ -11,7 +10,6 @@ import {
   validateScheduleWindow,
 } from '../utils/barberScheduleDefaults.js';
 import { generateShopCode } from '../utils/generateCode.js';
-import { normalizeLocationPoint } from '../utils/locationPoint.js';
 import { sendEmail } from '../utils/mailer.js';
 import { normalizeUpiId } from '../utils/upi.js';
 
@@ -21,13 +19,9 @@ const signToken = (payload) =>
   });
 
 const PASSWORD_RESET_OTP_MINUTES = Number(process.env.PASSWORD_RESET_OTP_MINUTES || 10);
-
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
-
 const generatePasswordResetOtp = () => String(Math.floor(100000 + Math.random() * 900000));
-
-const hashPasswordResetOtp = (otp) =>
-  crypto.createHash('sha256').update(String(otp)).digest('hex');
+const hashPasswordResetOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
 
 const clearPasswordResetState = (user) => {
   user.passwordResetOtpHash = null;
@@ -35,11 +29,34 @@ const clearPasswordResetState = (user) => {
   user.passwordResetOtpRequestedAt = null;
 };
 
-const sendPasswordResetOtpEmail = async ({ email, name, otpCode, accountLabel }) => {
+const EMAIL_VERIFICATION_OTP_MINUTES = 15;
+const generateEmailVerificationOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const hashEmailVerificationOtp = (otp) => crypto.createHash('sha256').update(String(otp)).digest('hex');
+
+const sendEmailVerificationOtpEmail = async ({ email, name, otpCode }) => {
   const lines = [
     `Hi ${name || 'there'},`,
     '',
-    `Your BookMyCut ${accountLabel} password reset OTP is: ${otpCode}`,
+    `Welcome to BookMyCut! Your email verification OTP is: ${otpCode}`,
+    '',
+    `This OTP will expire in ${EMAIL_VERIFICATION_OTP_MINUTES} minutes.`,
+    'If you did not sign up for this account, please ignore this email.',
+    '',
+    'BookMyCut',
+  ];
+
+  return sendEmail({
+    to: email,
+    subject: 'BookMyCut Email Verification OTP',
+    text: lines.join('\n'),
+  });
+};
+
+const sendPasswordResetOtpEmail = async ({ email, name, otpCode }) => {
+  const lines = [
+    `Hi ${name || 'there'},`,
+    '',
+    `Your BookMyCut password reset OTP is: ${otpCode}`,
     '',
     `This OTP will expire in ${PASSWORD_RESET_OTP_MINUTES} minutes.`,
     'If you did not request this password reset, you can ignore this email.',
@@ -54,10 +71,172 @@ const sendPasswordResetOtpEmail = async ({ email, name, otpCode, accountLabel })
   });
 };
 
-const createPasswordResetOtpRequestHandler = ({ Model, accountLabel }) => async (req, res, next) => {
+export const register = async (req, res, next) => {
+  try {
+    const { name, email, phone, password, role } = req.body;
+
+    const existingUser = await User.findOne({ email: normalizeEmail(email) }).lean();
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const otpCode = generateEmailVerificationOtp();
+    const otpHash = hashEmailVerificationOtp(otpCode);
+
+    const user = await User.create({
+      name,
+      email: normalizeEmail(email),
+      phone,
+      passwordHash,
+      roles: [role],
+      isEmailVerified: false,
+      emailVerificationOtpHash: otpHash,
+      emailVerificationExpiresAt: new Date(Date.now() + (EMAIL_VERIFICATION_OTP_MINUTES * 60 * 1000)),
+    });
+
+    await sendEmailVerificationOtpEmail({ email: user.email, name: user.name, otpCode });
+
+    return res.status(201).json({
+      success: true,
+      message: 'Verification OTP sent to email. Please verify.',
+      requireVerification: true,
+      email: user.email,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email: normalizeEmail(email) }).populate('shopId');
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ success: false, message: 'Please verify your email address to login.' });
+    }
+
+    const token = signToken({
+      id: user._id,
+      roles: user.roles,
+      shopId: user.shopId ? user.shopId._id : null,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          roles: user.roles,
+          gender: user.gender,
+          city: user.city,
+          state: user.state,
+          homeLocation: user.homeLocation,
+          // Barber specific
+          shopRole: user.shopRole,
+          shopId: user.shopId ? user.shopId._id : null,
+          shopName: user.shopId ? user.shopId.name : '',
+          shopCode: user.shopId ? user.shopId.shopCode : '',
+          upiId: user.upiId,
+          generalWorkStart: user.generalWorkStart,
+          generalWorkEnd: user.generalWorkEnd,
+          generalBreaks: user.generalBreaks,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const verifyEmail = async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
-    const user = await Model.findOne({ email });
+    const otp = String(req.body.otp || '').trim();
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ success: false, message: 'Email already verified' });
+    }
+
+    if (!user.emailVerificationOtpHash || !user.emailVerificationExpiresAt) {
+      return res.status(400).json({ success: false, message: 'No pending verification' });
+    }
+
+    if (new Date(user.emailVerificationExpiresAt).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+    }
+
+    if (user.emailVerificationOtpHash !== hashEmailVerificationOtp(otp)) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    user.isEmailVerified = true;
+    user.emailVerificationOtpHash = null;
+    user.emailVerificationExpiresAt = null;
+    await user.save();
+
+    const token = signToken({
+      id: user._id,
+      roles: user.roles,
+      shopId: user.shopId ? user.shopId._id : null,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          roles: user.roles,
+          gender: user.gender,
+          city: user.city,
+          state: user.state,
+          homeLocation: user.homeLocation,
+          // Barber specific
+          shopRole: user.shopRole,
+          shopId: user.shopId ? user.shopId._id : null,
+          shopName: user.shopId ? user.shopId.name : '',
+          shopCode: user.shopId ? user.shopId.shopCode : '',
+          upiId: user.upiId,
+          generalWorkStart: user.generalWorkStart,
+          generalWorkEnd: user.generalWorkEnd,
+          generalBreaks: user.generalBreaks,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requestPasswordResetOtp = async (req, res, next) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    const user = await User.findOne({ email });
 
     if (user) {
       const otpCode = generatePasswordResetOtp();
@@ -69,7 +248,6 @@ const createPasswordResetOtpRequestHandler = ({ Model, accountLabel }) => async 
         email: user.email,
         name: user.name,
         otpCode,
-        accountLabel,
       });
     }
 
@@ -82,12 +260,12 @@ const createPasswordResetOtpRequestHandler = ({ Model, accountLabel }) => async 
   }
 };
 
-const createPasswordResetHandler = ({ Model, accountLabel }) => async (req, res, next) => {
+export const resetPasswordWithOtp = async (req, res, next) => {
   try {
     const email = normalizeEmail(req.body.email);
     const otp = String(req.body.otp || '').trim();
     const newPassword = String(req.body.newPassword || '');
-    const user = await Model.findOne({ email });
+    const user = await User.findOne({ email });
 
     if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
@@ -109,142 +287,41 @@ const createPasswordResetHandler = ({ Model, accountLabel }) => async (req, res,
 
     return res.status(200).json({
       success: true,
-      message: `${accountLabel.charAt(0).toUpperCase() + accountLabel.slice(1)} password reset successful. Please login with your new password.`,
+      message: 'Password reset successful. Please login with your new password.',
     });
   } catch (error) {
     next(error);
   }
 };
 
-const requestCustomerPasswordResetOtp = createPasswordResetOtpRequestHandler({
-  Model: Customer,
-  accountLabel: 'customer',
-});
-
-const requestBarberPasswordResetOtp = createPasswordResetOtpRequestHandler({
-  Model: Barber,
-  accountLabel: 'barber',
-});
-
-const resetCustomerPasswordWithOtp = createPasswordResetHandler({
-  Model: Customer,
-  accountLabel: 'customer',
-});
-
-const resetBarberPasswordWithOtp = createPasswordResetHandler({
-  Model: Barber,
-  accountLabel: 'barber',
-});
-
-/**
- * Registers a new customer account.
- * Access: Public.
- * Business rules: email must be unique and password is stored as a bcrypt hash.
- */
-const registerCustomer = async (req, res, next) => {
+export const getMe = async (req, res, next) => {
   try {
-    const { name, email, phone, password, gender, dateOfBirth, homeLocation } = req.body;
-
-    const existingCustomer = await Customer.findOne({ email: email.toLowerCase() }).lean();
-
-    if (existingCustomer) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
+    const user = await User.findById(req.user.id).populate('shopId').lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    const normalizedHomeLocation = normalizeLocationPoint(homeLocation);
-    if (!normalizedHomeLocation) {
-      return res.status(400).json({ success: false, message: 'Customer location is required' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const customer = await Customer.create({
-      name,
-      email,
-      phone,
-      passwordHash,
-      gender,
-      dateOfBirth,
-      location: normalizedHomeLocation.address || '',
-      city: normalizedHomeLocation.city || '',
-      state: normalizedHomeLocation.state || '',
-      homeLocation: normalizedHomeLocation,
-    });
-
-    const token = signToken({
-      id: customer._id,
-      userType: 'customer',
-      gender: customer.gender,
-      city: customer.city,
-      state: customer.state,
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: {
-        token,
-        customer: {
-          id: customer._id,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone || '',
-          gender: customer.gender,
-          address: customer.location || '',
-          city: customer.city,
-          state: customer.state,
-          homeLocation: customer.homeLocation || null,
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Authenticates an existing customer.
- * Access: Public.
- * Business rules: only valid email/password pairs can receive a JWT.
- */
-const loginCustomer = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    const customer = await Customer.findOne({ email: email.toLowerCase() });
-
-    if (!customer) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, customer.passwordHash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const token = signToken({
-      id: customer._id,
-      userType: 'customer',
-      gender: customer.gender,
-      city: customer.city,
-      state: customer.state,
-    });
 
     return res.status(200).json({
       success: true,
       data: {
-        token,
-        customer: {
-          id: customer._id,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone || '',
-          gender: customer.gender,
-          address: customer.location || '',
-          city: customer.city,
-          state: customer.state,
-          homeLocation: customer.homeLocation || null,
-        },
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        roles: user.roles,
+        gender: user.gender,
+        city: user.city,
+        state: user.state,
+        homeLocation: user.homeLocation,
+        // Barber specific
+        shopRole: user.shopRole,
+        shopId: user.shopId ? user.shopId._id : null,
+        shopName: user.shopId ? user.shopId.name : '',
+        shopCode: user.shopId ? user.shopId.shopCode : '',
+        upiId: user.upiId,
+        generalWorkStart: user.generalWorkStart,
+        generalWorkEnd: user.generalWorkEnd,
+        generalBreaks: user.generalBreaks,
       },
     });
   } catch (error) {
@@ -252,41 +329,20 @@ const loginCustomer = async (req, res, next) => {
   }
 };
 
-/**
- * Registers a barber owner and creates their shop.
- * Access: Public.
- * Business rules: barber email must be unique, the owner is linked to the created shop, and shop codes are generated server-side.
- */
-const registerBarberOwner = async (req, res, next) => {
+export const setupBarberOwner = async (req, res, next) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      upiId,
-      password,
-      shopName,
-      shopAddress,
-      shopLng,
-      shopLat,
-      shopCity,
-      shopState,
-      genderServed,
-      hasHomeService,
-      services,
-      openTime,
-      closeTime,
-      generalWorkStart,
-      generalWorkEnd,
-      generalBreaks = [],
-      canOfferHomeServices,
-    } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const existingBarber = await Barber.findOne({ email: email.toLowerCase() }).lean();
-
-    if (existingBarber) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
+    if (user.shopId) {
+      return res.status(400).json({ success: false, message: 'User already belongs to a shop' });
     }
+
+    const {
+      upiId, shopName, shopAddress, shopLng, shopLat, shopCity, shopState,
+      genderServed, hasHomeService, services, openTime, closeTime,
+      generalWorkStart, generalWorkEnd, generalBreaks = [], canOfferHomeServices
+    } = req.body;
 
     const parsedGeneralSchedule = parseGeneralScheduleInput({
       workStart: generalWorkStart,
@@ -294,32 +350,14 @@ const registerBarberOwner = async (req, res, next) => {
       breaks: generalBreaks,
     });
     const generalScheduleError = validateScheduleWindow(parsedGeneralSchedule);
+    if (generalScheduleError) return res.status(400).json({ success: false, message: generalScheduleError });
 
-    if (generalScheduleError) {
-      return res.status(400).json({ success: false, message: generalScheduleError });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
     const shopCode = generateShopCode();
-
-    const barber = await Barber.create({
-      name,
-      email,
-      phone,
-      upiId: normalizeUpiId(upiId),
-      passwordHash,
-      role: 'owner',
-      shopId: null,
-      canOfferHomeServices,
-      generalWorkStart: parsedGeneralSchedule.workStart,
-      generalWorkEnd: parsedGeneralSchedule.workEnd,
-      generalBreaks: parsedGeneralSchedule.breaks,
-    });
 
     const shop = await Shop.create({
       shopCode,
       name: shopName,
-      ownerId: barber._id,
+      ownerId: user._id,
       location: {
         type: 'Point',
         coordinates: [Number(shopLng), Number(shopLat)],
@@ -334,63 +372,53 @@ const registerBarberOwner = async (req, res, next) => {
       closeTime,
     });
 
-    barber.shopId = shop._id;
-    await barber.save();
+    user.upiId = normalizeUpiId(upiId);
+    user.shopRole = 'owner';
+    user.shopId = shop._id;
+    user.canOfferHomeServices = Boolean(canOfferHomeServices);
+    user.generalWorkStart = parsedGeneralSchedule.workStart;
+    user.generalWorkEnd = parsedGeneralSchedule.workEnd;
+    user.generalBreaks = parsedGeneralSchedule.breaks;
+    if (!user.roles.includes('barber')) user.roles.push('barber');
+    
+    await user.save();
 
     const token = signToken({
-      id: barber._id,
-      userType: 'barber',
-      role: 'owner',
+      id: user._id,
+      roles: user.roles,
       shopId: shop._id,
     });
 
     return res.status(201).json({
       success: true,
-        data: {
-          token,
-          shopCode,
-          barber: { id: barber._id, name: barber.name, role: barber.role, upiId: barber.upiId || '' },
-          shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
-        },
+      data: {
+        token,
+        shopCode,
+        user: { id: user._id, name: user.name, roles: user.roles, upiId: user.upiId || '' },
+        shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
+      },
     });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Registers a staff barber into an existing shop.
- * Access: Public.
- * Business rules: the provided shop code must exist and barber email must be unique.
- */
-const registerBarberStaff = async (req, res, next) => {
+export const setupBarberStaff = async (req, res, next) => {
   try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (user.shopId) {
+      return res.status(400).json({ success: false, message: 'User already belongs to a shop' });
+    }
+
     const {
-      name,
-      email,
-      phone,
-      upiId,
-      password,
-      shopCode,
-      generalWorkStart,
-      generalWorkEnd,
-      generalBreaks = [],
-      canOfferHomeServices,
+      upiId, shopCode, generalWorkStart, generalWorkEnd, generalBreaks = [], canOfferHomeServices
     } = req.body;
 
     const shop = await Shop.findOne({ shopCode }).lean();
-
     if (!shop) {
-      return res.status(404).json({
-        success: false,
-        message: 'Shop not found. Check your Shop ID.',
-      });
-    }
-
-    const existingBarber = await Barber.findOne({ email: email.toLowerCase() }).lean();
-
-    if (existingBarber) {
-      return res.status(400).json({ success: false, message: 'Email already registered' });
+      return res.status(404).json({ success: false, message: 'Shop not found. Check your Shop ID.' });
     }
 
     const parsedGeneralSchedule = parseGeneralScheduleInput({
@@ -399,208 +427,40 @@ const registerBarberStaff = async (req, res, next) => {
       breaks: generalBreaks,
     });
     const generalScheduleError = validateScheduleWindow(parsedGeneralSchedule);
+    if (generalScheduleError) return res.status(400).json({ success: false, message: generalScheduleError });
 
-    if (generalScheduleError) {
-      return res.status(400).json({ success: false, message: generalScheduleError });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    const normalizedCanOfferHomeServices =
-      shop.genderServed === 'Male' ? false : Boolean(canOfferHomeServices);
-
-    const barber = await Barber.create({
-      name,
-      email,
-      phone,
-      upiId: normalizeUpiId(upiId),
-      passwordHash,
-      role: 'staff',
-      shopId: shop._id,
-      canOfferHomeServices: normalizedCanOfferHomeServices,
-      generalWorkStart: parsedGeneralSchedule.workStart,
-      generalWorkEnd: parsedGeneralSchedule.workEnd,
-      generalBreaks: parsedGeneralSchedule.breaks,
-    });
+    const normalizedCanOfferHomeServices = shop.genderServed === 'Male' ? false : Boolean(canOfferHomeServices);
 
     if (normalizedCanOfferHomeServices && !shop.hasHomeService) {
       await Shop.findByIdAndUpdate(shop._id, { hasHomeService: true });
-
     }
 
+    user.upiId = normalizeUpiId(upiId);
+    user.shopRole = 'staff';
+    user.shopId = shop._id;
+    user.canOfferHomeServices = normalizedCanOfferHomeServices;
+    user.generalWorkStart = parsedGeneralSchedule.workStart;
+    user.generalWorkEnd = parsedGeneralSchedule.workEnd;
+    user.generalBreaks = parsedGeneralSchedule.breaks;
+    if (!user.roles.includes('barber')) user.roles.push('barber');
+    
+    await user.save();
+
     const token = signToken({
-      id: barber._id,
-      userType: 'barber',
-      role: 'staff',
+      id: user._id,
+      roles: user.roles,
       shopId: shop._id,
     });
 
     return res.status(201).json({
       success: true,
-        data: {
-          token,
-          barber: { id: barber._id, name: barber.name, role: barber.role, upiId: barber.upiId || '' },
-          shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
-        },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Authenticates an owner or staff barber.
- * Access: Public.
- * Business rules: only valid barber credentials can receive a JWT with shop and role claims.
- */
-const loginBarber = async (req, res, next) => {
-  try {
-    const { email, password } = req.body;
-
-    const barber = await Barber.findOne({ email: email.toLowerCase() }).populate('shopId');
-
-    if (!barber) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const isMatch = await bcrypt.compare(password, barber.passwordHash);
-
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    if (!barber.shopId) {
-      return res.status(401).json({
-        success: false,
-        message: 'You are no longer assigned to a shop.',
-      });
-    }
-
-    const token = signToken({
-      id: barber._id,
-      userType: 'barber',
-      role: barber.role,
-      shopId: barber.shopId ? barber.shopId._id : null,
-    });
-
-    return res.status(200).json({
-      success: true,
       data: {
-        ...(() => {
-          const defaultSchedule = getBarberDefaultSchedule(barber);
-          return {
-            token,
-            barber: {
-              id: barber._id,
-              name: barber.name,
-              email: barber.email,
-              upiId: barber.upiId || '',
-              role: barber.role,
-              shopId: barber.shopId ? barber.shopId._id : null,
-              shopName: barber.shopId ? barber.shopId.name : '',
-              shopAddress: barber.shopId ? barber.shopId.location?.address : '',
-              shopCity: barber.shopId ? barber.shopId.location?.city : '',
-              shopState: barber.shopId ? barber.shopId.location?.state : '',
-              openTime: barber.shopId ? barber.shopId.openTime : 540,
-              closeTime: barber.shopId ? barber.shopId.closeTime : 1260,
-              generalWorkStart: defaultSchedule.workStart,
-              generalWorkEnd: defaultSchedule.workEnd,
-              generalBreaks: defaultSchedule.breaks,
-            },
-          };
-        })(),
+        token,
+        user: { id: user._id, name: user.name, roles: user.roles, upiId: user.upiId || '' },
+        shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
       },
     });
   } catch (error) {
     next(error);
   }
 };
-
-/**
- * Returns the authenticated customer's profile from the database.
- * Access: Protected (customer JWT required).
- */
-const getCustomerMe = async (req, res, next) => {
-  try {
-    const customer = await Customer.findById(req.user.id).lean();
-    if (!customer) {
-      return res.status(404).json({ success: false, message: 'Customer not found' });
-    }
-    return res.status(200).json({
-      success: true,
-      data: {
-        id: customer._id,
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone || '',
-        gender: customer.gender,
-        city: customer.city || '',
-        state: customer.state || '',
-        dateOfBirth: customer.dateOfBirth || null,
-        address: customer.location || '',
-        homeLocation: customer.homeLocation || null,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * Returns the authenticated barber's profile + shop from the database.
- * Access: Protected (barber JWT required).
- */
-const getBarberMe = async (req, res, next) => {
-  try {
-    const barber = await Barber.findById(req.user.id).populate('shopId').lean();
-    if (!barber) {
-      return res.status(404).json({ success: false, message: 'Barber not found' });
-    }
-    const shop = barber.shopId;
-    const defaultSchedule = getBarberDefaultSchedule(barber);
-    return res.status(200).json({
-      success: true,
-      data: {
-        id: barber._id,
-        name: barber.name,
-        email: barber.email,
-        phone: barber.phone || '',
-        upiId: barber.upiId || '',
-        role: barber.role,
-        shopId: shop ? shop._id : null,
-        shopName: shop ? shop.name : '',
-        shopCode: shop ? shop.shopCode : '',
-        shopAddress: shop ? (shop.location?.address || '') : '',
-        shopCity: shop ? (shop.location?.city || '') : '',
-        shopState: shop ? (shop.location?.state || '') : '',
-        shopLat: shop ? (shop.location?.coordinates?.[1] ?? null) : null,
-        shopLng: shop ? (shop.location?.coordinates?.[0] ?? null) : null,
-        openTime: shop ? (shop.openTime ?? 540) : 540,
-        closeTime: shop ? (shop.closeTime ?? 1260) : 1260,
-        generalWorkStart: defaultSchedule.workStart,
-        generalWorkEnd: defaultSchedule.workEnd,
-        generalBreaks: defaultSchedule.breaks,
-        homeServiceBarber: Boolean(barber.canOfferHomeServices),
-        isHomeServiceActive: Boolean(barber.isAcceptingHomeVisitsToday),
-        barberId: barber._id,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export {
-  registerCustomer,
-  loginCustomer,
-  registerBarberOwner,
-  registerBarberStaff,
-  loginBarber,
-  requestCustomerPasswordResetOtp,
-  requestBarberPasswordResetOtp,
-  resetCustomerPasswordWithOtp,
-  resetBarberPasswordWithOtp,
-  getCustomerMe,
-  getBarberMe,
-};
-
-

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import Shop from '../models/shop.model.js';
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 
 /**
  * Finds nearby active shops with optional gender filtering.
@@ -230,7 +230,7 @@ const getPublicBarbersForShop = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Shop not found' });
     }
 
-    const barbers = await Barber.find({ shopId })
+    const barbers = await User.find({ shopId })
       .select('name role canOfferHomeServices isAcceptingHomeVisitsToday isAvailableToday upiId')
       .lean();
 

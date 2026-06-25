@@ -19,7 +19,7 @@ const shopSchema = new mongoose.Schema(
   {
     shopCode: { type: String, unique: true, required: true },
     name: { type: String, required: true, trim: true },
-    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Barber', required: true },
+    ownerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     location: {
       type: {
         type: String,

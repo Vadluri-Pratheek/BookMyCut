@@ -1,14 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setCustomerToken, setCustomerProfileCache } from '../api/client';
-import { T } from '../pages/CustomerDashboard';
+import { useTheme } from '../hooks/useTheme';
 
 export const ProfileDropdown = ({ open, onClose, onEdit }) => {
+  const T = useTheme();
   const navigate = useNavigate();
   if (!open) return null;
   const items = [
-    { label: 'Edit Profile', icon: '👤' },
-    { label: 'Logout', icon: '🚪', danger: true },
+    { label: 'Logout', icon: '🏃', danger: true },
   ];
   return (
     <>

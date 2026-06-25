@@ -5,7 +5,6 @@ import {
   FaStore, FaLink,
   FaCircleCheck, FaUser, FaEye, FaEyeSlash
 } from 'react-icons/fa6';
-import BrandLogo from '../components/BrandLogo';
 import InputField from '../components/InputField';
 import PasswordInput from '../components/PasswordInput';
 import ForgotPasswordForm from '../components/ForgotPasswordForm';
@@ -112,24 +111,25 @@ const validateWorkingHours = (form) => {
 };
 
 const persistBarberSession = (payload = {}) => {
-  const { token, barber, shop } = payload;
+  const { token, barber, shop, user } = payload;
 
   if (token) {
     setBarberToken(token);
   }
 
-  if (!barber) {
+  const profile = barber || user;
+  if (!profile) {
     return;
   }
 
   setBarberProfileCache({
-    ...barber,
-    id: barber.id || null,
-    barberId: barber.barberId || barber.id || null,
-    shopId: barber.shopId || shop?.id || null,
-    shopName: barber.shopName || shop?.name || '',
-    shopCode: barber.shopCode || shop?.shopCode || '',
-    upiId: barber.upiId || '',
+    ...profile,
+    id: profile.id || profile._id || null,
+    barberId: profile.barberId || profile.id || profile._id || null,
+    shopId: profile.shopId || shop?.id || null,
+    shopName: profile.shopName || shop?.name || '',
+    shopCode: profile.shopCode || shop?.shopCode || '',
+    upiId: profile.upiId || '',
   });
 };
 
@@ -284,7 +284,7 @@ const BarberLoginForm = ({ onSwitch, onLogin }) => {
     setErrors({});
     setResetNotice('');
     try {
-      const res = await apiRequest('/auth/barber/login', {
+      const res = await apiRequest('/auth/login', {
         method: 'POST',
         auth: 'none',
         body: { email: form.email.trim(), password: form.password },
@@ -302,8 +302,8 @@ const BarberLoginForm = ({ onSwitch, onLogin }) => {
   if (showForgot) {
     return (
       <ForgotPasswordForm
-        requestPath="/auth/barber/forgot-password"
-        resetPath="/auth/barber/reset-password"
+        requestPath="/auth/forgot-password"
+        resetPath="/auth/reset-password"
         accountLabel="barber"
         emailPlaceholder="you@barbershop.com"
         onBack={() => setShowForgot(false)}
@@ -395,6 +395,9 @@ const OwnerSignupForm = ({ onBack }) => {
   const [selectedServices, setSelectedServices] = useState([]);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [pendingRegData, setPendingRegData] = useState(null);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
@@ -443,8 +446,7 @@ const OwnerSignupForm = ({ onBack }) => {
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     const genderServed = gender === 'female' ? 'Female' : (gender === 'male' ? 'Male' : 'Unisex');
-    const isHomeServed = gender === 'female' || gender === 'both';
-    const isHome = isHomeServed && homeServiceBarber;
+    const isHome = homeServiceBarber;
 
     const servicesPayload = selectedServices
       .map((id) => {
@@ -462,34 +464,54 @@ const OwnerSignupForm = ({ onBack }) => {
     setBusy(true);
     setErrors({});
     try {
-      const res = await apiRequest('/auth/barber/register/owner', {
+      // 1. Register User
+      const regRes = await apiRequest('/auth/register', {
         method: 'POST',
         auth: 'none',
         body: {
           name: form.name.trim(),
           email: form.email.trim(),
-          phone: form.phone.trim(),
-          upiId: normalizeUpiId(form.upiId),
           password: form.password,
-          shopName: form.shopName.trim(),
-          shopAddress: (form.shopAddress || mapLocation.address || '').trim(),
-          shopLng: Number(mapLocation.lng),
-          shopLat: Number(mapLocation.lat),
-          shopCity: form.shopCity,
-          shopState: form.shopState,
-          genderServed,
-          hasHomeService: Boolean(isHome),
-          canOfferHomeServices: Boolean(isHome),
-          services: servicesPayload,
-          openTime: 540,
-          closeTime: 1260,
-          generalWorkStart: timeStrToMins(form.generalWorkStart),
-          generalWorkEnd: timeStrToMins(form.generalWorkEnd),
-          generalBreaks: buildGeneralBreaksPayload(form),
+          phone: form.phone.trim(),
+          role: 'barber',
         },
       });
 
-      persistBarberSession(res.data);
+      const ownerData = {
+        upiId: normalizeUpiId(form.upiId),
+        shopName: form.shopName.trim(),
+        shopAddress: (form.shopAddress || mapLocation.address || '').trim(),
+        shopLng: Number(mapLocation.lng),
+        shopLat: Number(mapLocation.lat),
+        shopCity: form.shopCity,
+        shopState: form.shopState,
+        genderServed,
+        hasHomeService: Boolean(isHome),
+        canOfferHomeServices: Boolean(isHome),
+        services: servicesPayload,
+        openTime: 540,
+        closeTime: 1260,
+        generalWorkStart: timeStrToMins(form.generalWorkStart),
+        generalWorkEnd: timeStrToMins(form.generalWorkEnd),
+        generalBreaks: buildGeneralBreaksPayload(form),
+      };
+
+      if (regRes.requireVerification) {
+        setPendingRegData({ ownerData, isHome });
+        setShowOtp(true);
+        return;
+      }
+
+      persistBarberSession(regRes.data);
+
+      // 2. Setup Barber Owner
+      const setupRes = await apiRequest('/auth/barber/setup-owner', {
+        method: 'POST',
+        auth: 'barber',
+        body: ownerData,
+      });
+
+      persistBarberSession({ barber: setupRes.data.user, shop: setupRes.data.shop });
       navigate('/barber/dashboard');
       warmBarberSession({ enableHomeService: isHome });
     } catch (err) {
@@ -498,6 +520,57 @@ const OwnerSignupForm = ({ onBack }) => {
       setBusy(false);
     }
   };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length < 6) return;
+    setBusy(true);
+    setErrors({});
+    try {
+      const res = await apiRequest('/auth/verify-email', {
+        method: 'POST',
+        auth: 'none',
+        body: { email: form.email, otp },
+      });
+      persistBarberSession(res.data);
+
+      const setupRes = await apiRequest('/auth/barber/setup-owner', {
+        method: 'POST',
+        auth: 'barber',
+        body: pendingRegData.ownerData,
+      });
+
+      persistBarberSession({ barber: setupRes.data.user, shop: setupRes.data.shop });
+      navigate('/barber/dashboard');
+      warmBarberSession({ enableHomeService: pendingRegData.isHome });
+    } catch (err) {
+      setErrors({ api: err.message || 'OTP verification failed' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (showOtp) {
+    return (
+      <form className="form-stack" onSubmit={handleVerifyOtp} noValidate>
+        <button type="button" className="btn-back" onClick={() => setShowOtp(false)}>
+          <FaArrowLeft size={11} /> Back
+        </button>
+        <div className="section-heading">Verify Email</div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Enter the 6-digit code sent to {form.email}
+        </p>
+        <InputField
+          label="Verification Code" id="owner-otp" type="text"
+          placeholder="6-digit OTP" value={otp}
+          onChange={(e) => setOtp(e.target.value)} error={errors.api} required maxLength={6}
+        />
+        <button type="submit" className="btn-primary" disabled={busy}>
+          {busy ? 'Verifying…' : 'Verify & Complete'}
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form className="form-stack" onSubmit={handleSubmit} noValidate>
@@ -570,15 +643,13 @@ const OwnerSignupForm = ({ onBack }) => {
         />
       </div>
 
-      {gender === 'female' && (
-        <label className="check-label" style={{ marginTop: '0.2rem', marginBottom: '0.6rem', background: 'var(--bg-light)', padding: '0.75rem', borderRadius: 8, border: '1px solid var(--border)' }}>
-          <input type="checkbox" checked={homeServiceBarber}
-            onChange={() => setHomeServiceBarber(!homeServiceBarber)} />
-          I offer home services for female customers
-        </label>
-      )}
+      <label className="check-label" style={{ marginTop: '0.2rem', marginBottom: '0.6rem', background: 'var(--bg-light)', padding: '0.75rem', borderRadius: 8, border: '1px solid var(--border)' }}>
+        <input type="checkbox" checked={homeServiceBarber}
+          onChange={() => setHomeServiceBarber(!homeServiceBarber)} />
+        I offer home services
+      </label>
 
-      {}
+      {/* Services List */}
       <label className="check-label">
         <input type="checkbox" checked={form.terms}
           onChange={() => setForm((f) => ({ ...f, terms: !f.terms }))} />
@@ -628,9 +699,12 @@ const JoinSignupForm = ({ onBack }) => {
   const [homeServiceBarber, setHomeServiceBarber] = useState(false);
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const [showOtp, setShowOtp] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [pendingRegData, setPendingRegData] = useState(null);
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
-  const homeServiceEligible = shopPreview && shopPreview.genderServed !== 'Male';
+  const homeServiceEligible = Boolean(shopPreview);
 
   useEffect(() => {
     const shopCode = form.shopId.trim();
@@ -653,9 +727,6 @@ const JoinSignupForm = ({ onBack }) => {
 
         if (!cancelled) {
           setShopPreview(res.data || null);
-          if ((res.data?.genderServed || '') === 'Male') {
-            setHomeServiceBarber(false);
-          }
         }
       } catch {
         if (!cancelled) {
@@ -689,23 +760,43 @@ const JoinSignupForm = ({ onBack }) => {
     setBusy(true);
     setErrors({});
     try {
-      const res = await apiRequest('/auth/barber/register/staff', {
+      // 1. Register User
+      const regRes = await apiRequest('/auth/register', {
         method: 'POST',
         auth: 'none',
         body: {
           name: form.name.trim(),
           email: form.email.trim(),
-          phone: form.phone.trim(),
-          upiId: normalizeUpiId(form.upiId),
           password: form.password,
-          shopCode: form.shopId.trim(),
-          generalWorkStart: timeStrToMins(form.generalWorkStart),
-          generalWorkEnd: timeStrToMins(form.generalWorkEnd),
-          generalBreaks: buildGeneralBreaksPayload(form),
-          canOfferHomeServices: Boolean(homeServiceEligible && homeServiceBarber),
+          phone: form.phone.trim(),
+          role: 'barber',
         },
       });
-      persistBarberSession(res.data);
+
+      const staffData = {
+        upiId: normalizeUpiId(form.upiId),
+        shopCode: form.shopId.trim(),
+        generalWorkStart: timeStrToMins(form.generalWorkStart),
+        generalWorkEnd: timeStrToMins(form.generalWorkEnd),
+        generalBreaks: buildGeneralBreaksPayload(form),
+        canOfferHomeServices: Boolean(homeServiceEligible && homeServiceBarber),
+      };
+
+      if (regRes.requireVerification) {
+        setPendingRegData(staffData);
+        setShowOtp(true);
+        return;
+      }
+
+      persistBarberSession(regRes.data);
+
+      // 2. Setup Barber Staff
+      const setupRes = await apiRequest('/auth/barber/setup-staff', {
+        method: 'POST',
+        auth: 'barber',
+        body: staffData,
+      });
+      persistBarberSession({ barber: setupRes.data.user });
       navigate('/barber/dashboard');
       warmBarberSession({ enableHomeService: Boolean(homeServiceEligible && homeServiceBarber) });
     } catch (err) {
@@ -714,6 +805,56 @@ const JoinSignupForm = ({ onBack }) => {
       setBusy(false);
     }
   };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    if (!otp || otp.length < 6) return;
+    setBusy(true);
+    setErrors({});
+    try {
+      const res = await apiRequest('/auth/verify-email', {
+        method: 'POST',
+        auth: 'none',
+        body: { email: form.email, otp },
+      });
+      persistBarberSession(res.data);
+
+      const setupRes = await apiRequest('/auth/barber/setup-staff', {
+        method: 'POST',
+        auth: 'barber',
+        body: pendingRegData,
+      });
+      persistBarberSession({ barber: setupRes.data.user });
+      navigate('/barber/dashboard');
+      warmBarberSession({ enableHomeService: pendingRegData.canOfferHomeServices });
+    } catch (err) {
+      setErrors({ api: err.message || 'OTP verification failed' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (showOtp) {
+    return (
+      <form className="form-stack" onSubmit={handleVerifyOtp} noValidate>
+        <button type="button" className="btn-back" onClick={() => setShowOtp(false)}>
+          <FaArrowLeft size={11} /> Back
+        </button>
+        <div className="section-heading">Verify Email</div>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          Enter the 6-digit code sent to {form.email}
+        </p>
+        <InputField
+          label="Verification Code" id="join-otp" type="text"
+          placeholder="6-digit OTP" value={otp}
+          onChange={(e) => setOtp(e.target.value)} error={errors.api} required maxLength={6}
+        />
+        <button type="submit" className="btn-primary" disabled={busy}>
+          {busy ? 'Verifying…' : 'Verify & Complete'}
+        </button>
+      </form>
+    );
+  }
 
   return (
     <form className="form-stack" onSubmit={handleSubmit} noValidate>
@@ -784,7 +925,7 @@ const JoinSignupForm = ({ onBack }) => {
             checked={homeServiceBarber}
             onChange={() => setHomeServiceBarber((prev) => !prev)}
           />
-          I offer home services for female customers
+          I offer home services
         </label>
       )}
 
@@ -853,13 +994,9 @@ const BarberAuthPage = () => {
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <BrandLogo
-            size={36}
-            textStyle={{
-              fontSize: '1.08rem',
-              letterSpacing: '-0.045em',
-            }}
-          />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+            Barber Portal
+          </h2>
           <RoleBadge role="barber" />
         </div>
 

@@ -1,10 +1,12 @@
 import React from 'react';
 import { FaMapMarkerAlt, FaClock } from 'react-icons/fa';
 import { FaScissors } from 'react-icons/fa6';
-import { T, fmtTime, SHOP_CARD_MIN_HEIGHT, ONE_LINE_ELLIPSIS, TWO_LINE_CLAMP } from '../pages/CustomerDashboard';
+import { fmtTime, SHOP_CARD_MIN_HEIGHT, ONE_LINE_ELLIPSIS, TWO_LINE_CLAMP } from '../pages/CustomerDashboardUtils';
+import { useTheme } from '../hooks/useTheme';
 import { Stars } from './CustomerStars';
 
 export const ShopCard = ({ shop, onBook, user }) => {
+  const T = useTheme();
   return (
     <div style={{
       background: T.surface, border: `1px solid ${T.br}`,
@@ -57,8 +59,7 @@ export const ShopCard = ({ shop, onBook, user }) => {
         >
           Book Now
         </button>
-        {/* VERIFIED: hasHomeService auto-tags correctly */}
-        {(user?.gender || '').toLowerCase() === 'female' && shop.hasHomeService && (
+        {shop.hasHomeService && (
           <button
             onClick={() => onBook({ ...shop, isHomeService: true })}
             style={{

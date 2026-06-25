@@ -1,7 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaArrowLeft, FaCheck, FaCrosshairs } from 'react-icons/fa';
 import { FaScissors, FaUser, FaChevronDown, FaXmark, FaCalendarDays } from 'react-icons/fa6';
-import BrandLogo from '../components/BrandLogo';
 import {
   apiRequest,
   getCustomerProfileCache,
@@ -21,6 +20,8 @@ import { Stars } from '../components/CustomerStars';
 import { ContinuousTimeline } from '../components/CustomerContinuousTimeline';
 import { ShopCard } from '../components/CustomerShopCard';
 import { ProfileDropdown } from '../components/CustomerProfileDropdown';
+import { CustomerAuthModal } from '../components/CustomerAuthModal';
+import { useTheme } from '../hooks/useTheme';
 
 // Fix Leaflet default icon paths broken by bundlers
 delete L.Icon.Default.prototype._getIconUrl;
@@ -30,39 +31,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-export const T = {
-  bg: '#f1f5f9', surface: '#ffffff', s2: '#f8fafc', s3: '#f1f5f9',
-  br: '#e2e8f0', br2: '#cbd5e1',
-  text: '#0f172a', text2: '#475569', text3: '#94a3b8',
-  gold: '#0d9488', green: '#5a9e6f', amber: '#c97c2e',
-};
-export const SHOP_CARD_MIN_HEIGHT = 250;
-export const BOOKING_CARD_MIN_HEIGHT = 170;
-export const CUSTOMER_TIMELINE_OPEN = 7 * 60;
-export const CUSTOMER_TIMELINE_CLOSE = 23 * 60;
-export const ONE_LINE_ELLIPSIS = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-export const TWO_LINE_CLAMP = { display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' };
-
-export const pct = (m, open, total) => `${((m - open) / total * 100).toFixed(3)}%`;
-export const pctW = (d, total) => `${(d / total * 100).toFixed(3)}%`;
-export const fmtTime = (mins) => {
-  if (mins == null) return '--';
-  const h = Math.floor(mins / 60), m = mins % 60;
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const hh = h > 12 ? h - 12 : (h === 0 ? 12 : h);
-  return `${hh}:${String(m).padStart(2, '0')} ${ampm}`;
-};
-export const getDateStr = (offset = 0) => getLocalDateStr(offset);
-export const getDayLabel = (offset) => {
-  if (offset === 0) return 'Today';
-  if (offset === 1) return 'Tomorrow';
-  const d = getLocalDateWithOffset(offset);
-  return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-};
-export const DATES = [0, 1, 2, 3].map(o => ({ offset: o, str: getDateStr(o), label: getDayLabel(o) }));
-export const INITIAL_BOOKING_DATE = DATES.find((date) => !isTuesdayDateStr(date.str)) || DATES[0];
-export const CURRENT_CUSTOMER_BUFFER_SECONDS = 60;
-export const AUTO_CANCEL_BUFFER_SECONDS = 60;
+import {
+  T_FALLBACK, T, SHOP_CARD_MIN_HEIGHT, BOOKING_CARD_MIN_HEIGHT, CUSTOMER_TIMELINE_OPEN,
+  CUSTOMER_TIMELINE_CLOSE, ONE_LINE_ELLIPSIS, TWO_LINE_CLAMP, pct, pctW, fmtTime, getDateStr,
+  getDayLabel, DATES, INITIAL_BOOKING_DATE, CURRENT_CUSTOMER_BUFFER_SECONDS, AUTO_CANCEL_BUFFER_SECONDS
+} from './CustomerDashboardUtils';
 const BOOKING_SYNC_STORAGE_KEY = 'bookmycut_booking_sync';
 const BOOKING_SYNC_EVENT_NAME = 'bookmycut_booking_sync';
 const BOOKING_CONFIRM_REDIRECT_MS = 800;
@@ -222,6 +195,7 @@ const sortCustomerBookings = (bookings = []) => (
 );
 
 const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
+  const T = useTheme();
   const cachedCustomerProfile = getCustomerProfileCache();
   const [search, setSearch] = useState('');
   const [profileOpen, setProfileOpen] = useState(false);
@@ -241,9 +215,19 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     homeLocation: normalizeLocation(cachedCustomerProfile?.homeLocation) || null,
   });
   const [userLoading, setUserLoading] = useState(!cachedCustomerProfile);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [editForm, setEditForm] = useState(user);
+  const initialGender = useMemo(() => {
+    if (cachedCustomerProfile?.gender) return cachedCustomerProfile.gender;
+    try {
+      const token = getCustomerToken();
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.gender) return payload.gender;
+      }
+    } catch { /* ignore */ }
+    return 'Male';
+  }, [cachedCustomerProfile?.gender]);
+  const [filterGender, setFilterGender] = useState(initialGender);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
   const [bookingActionNotice, setBookingActionNotice] = useState(null);
@@ -262,7 +246,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
       const token = getCustomerToken();
       if (!token) { setUserLoading(false); return; }
       try {
-        const res = await apiRequest('/auth/customer/me', { method: 'GET', auth: 'customer' });
+        const res = await apiRequest('/auth/me', { method: 'GET', auth: 'customer' });
         if (!cancelled && res?.data) {
           const nextUser = {
             name: res.data.name || '',
@@ -325,13 +309,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     try {
       const location = await getCurrentBrowserLocation();
       setUserLocation(location);
-      setEditForm((prev) => ({
-        ...prev,
-        homeLocation: location,
-        address: location.address || prev.address,
-        city: location.city || prev.city,
-        state: location.state || prev.state,
-      }));
+
     } catch (error) {
       console.error('Error getting location:', error);
       alert(error.message || 'Unable to get your current location. Please enable location services.');
@@ -405,7 +383,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
           } catch { /* ignore invalid JWT */ }
         }
 
-        const gender = user.gender || jwtGender || 'Male';
+        const gender = filterGender || 'Male';
         const savedHomeLocation = normalizeLocation(user.homeLocation);
         const searchLocation = savedHomeLocation || userLocation || null;
         const fetchKey = JSON.stringify({
@@ -436,22 +414,32 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
           nearbyParams.set('lat', String(searchLocation.lat));
           shopRows = await requestShops(nearbyParams);
 
-          if (shopRows.length === 0 && (user.city || user.state)) {
-            shopRows = await requestShops(fallbackParams);
+          if (shopRows.length === 0) {
+            if (user.city || user.state) {
+              shopRows = await requestShops(fallbackParams);
+            }
+            if (shopRows.length === 0) {
+              // Fallback to New York for demo purposes if no shops are found near user
+              const defaultParams = new URLSearchParams({ gender });
+              defaultParams.set('lng', '-74.0060');
+              defaultParams.set('lat', '40.7128');
+              shopRows = await requestShops(defaultParams);
+            }
           }
         } else if (user.city || user.state) {
           shopRows = await requestShops(fallbackParams);
-        } else {
-          if (!cancelled) {
-            const nextSignature = '[]';
-            if (shopsSignatureRef.current !== nextSignature) {
-              shopsSignatureRef.current = nextSignature;
-              setShops([]);
-            }
-            shopsFetchKeyRef.current = fetchKey;
-            hasLoadedShopsRef.current = true;
+          if (shopRows.length === 0) {
+            const defaultParams = new URLSearchParams({ gender });
+            defaultParams.set('lng', '-74.0060');
+            defaultParams.set('lat', '40.7128');
+            shopRows = await requestShops(defaultParams);
           }
-          return;
+        } else {
+          // Default to New York if no location is available
+          const defaultParams = new URLSearchParams({ gender });
+          defaultParams.set('lng', '-74.0060');
+          defaultParams.set('lat', '40.7128');
+          shopRows = await requestShops(defaultParams);
         }
 
         if (!cancelled) {
@@ -496,47 +484,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     return () => {
       cancelled = true;
     };
-  }, [user.gender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, user.city, user.state, userLoading, user.homeLocation, userLocation]);
-
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setIsSavingProfile(true);
-    try {
-      const normalizedHomeLocation = normalizeLocation(editForm.homeLocation);
-      const res = await apiRequest('/customers/profile', {
-        method: 'PUT',
-        auth: 'customer',
-        body: {
-          ...editForm,
-          address: normalizedHomeLocation?.address || editForm.address || '',
-          city: normalizedHomeLocation?.city || editForm.city || '',
-          state: normalizedHomeLocation?.state || editForm.state || '',
-          homeLocation: normalizedHomeLocation,
-        },
-      });
-      if (res.success && res.data) {
-        // Update user state with new data
-        const nextUser = {
-          ...res.data,
-          homeLocation: normalizeLocation(res.data.homeLocation) || null,
-        };
-        setUser(nextUser);
-        setCustomerProfileCache(nextUser);
-
-        // If email was changed, update the token and show message
-        if (editForm.email !== user.email) {
-          alert('Email updated successfully! You can now login with your new email address.');
-          // Note: The user will need to re-login with the new email next time
-        }
-
-        setIsEditingProfile(false);
-      }
-    } catch (err) {
-      alert(err.message || 'Failed to update profile');
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
+  }, [user.gender, filterGender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, user.city, user.state, userLoading, user.homeLocation, userLocation]);
 
   const loadMyBookings = useCallback(async () => {
     const token = getCustomerToken();
@@ -686,10 +634,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
 
   const currentBookingsList = myBookings.filter(b => b.status === 'current');
   const pastBookingsList = myBookings.filter(b => b.status !== 'current');
-  const editHomeLocation = normalizeLocation(editForm.homeLocation);
-  const editHomeMapCenter = editHomeLocation
-    ? [editHomeLocation.lat, editHomeLocation.lng]
-    : [12.9716, 77.5946];
+
 
   const filtered = shops.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -711,69 +656,93 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
         position: 'sticky', top: 0, zIndex: 30, padding: '0 1.5rem',
       }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', height: 64, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {/* Logo */}
-          <BrandLogo
-            size={34}
-            textStyle={{
-              fontFamily: "'Poppins',sans-serif",
-              fontSize: 20,
-              color: T.gold,
-              letterSpacing: '-0.02em',
-            }}
-            containerStyle={{ flexShrink: 0 }}
-          />
+          {/* Logo Placeholder */}
 
-          {/* Search */}
-          <div style={{ flex: 1, position: 'relative', maxWidth: 440, margin: '0 auto' }}>
-            <FaSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.text3, fontSize: 13 }} />
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search by shop name or location…"
+          {/* Search & Gender */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: 540, margin: '0 auto' }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <FaSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: T.text3, fontSize: 13 }} />
+              <input
+                value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="Search by shop name or location…"
+                style={{
+                  width: '100%', padding: '0.55rem 1rem 0.55rem 2.2rem',
+                  background: T.s2, border: `1px solid ${T.br}`,
+                  borderRadius: 50, color: T.text, fontSize: 13, outline: 'none',
+                  fontFamily: "'Poppins',sans-serif",
+                  transition: 'border-color 0.2s',
+                }}
+                onFocus={e => e.target.style.borderColor = T.gold + '88'}
+                onBlur={e => e.target.style.borderColor = T.br}
+              />
+            </div>
+            {/* Gender Filter */}
+            <select
+              value={filterGender}
+              onChange={e => setFilterGender(e.target.value)}
               style={{
-                width: '100%', padding: '0.55rem 1rem 0.55rem 2.2rem',
+                padding: '0.55rem 0.9rem',
                 background: T.s2, border: `1px solid ${T.br}`,
                 borderRadius: 50, color: T.text, fontSize: 13, outline: 'none',
-                fontFamily: "'Poppins',sans-serif",
-                transition: 'border-color 0.2s',
+                fontFamily: "'Poppins',sans-serif", cursor: 'pointer',
+                flexShrink: 0,
               }}
-              onFocus={e => e.target.style.borderColor = T.gold + '88'}
-              onBlur={e => e.target.style.borderColor = T.br}
-            />
+            >
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Unisex">All</option>
+            </select>
           </div>
 
           {/* Profile */}
           <div style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, color: T.text2, fontWeight: 400 }}>Welcome, <strong style={{ color: T.text, fontWeight: 600 }}>{(user.name || 'User').split(' ')[0]}</strong></span>
-            <button
-              onClick={() => setProfileOpen(p => !p)}
-              style={{
-                width: 38, height: 38, borderRadius: '50%',
-                background: `linear-gradient(135deg,${T.gold},#0f766e)`,
-                border: 'none', cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', color: '#fff',
-                fontSize: 14, fontWeight: 700, fontFamily: "'Poppins',sans-serif"
-              }}
-            >
-              {user.name ? user.name.charAt(0).toUpperCase() : <FaUser size={15} />}
-            </button>
-            <ProfileDropdown
-              open={profileOpen}
-              onClose={() => setProfileOpen(false)}
-              onEdit={() => {
-                const normalizedHomeLocation = normalizeLocation(user.homeLocation) || null;
-                setEditForm({
-                  ...user,
-                  homeLocation: normalizedHomeLocation,
-                  address: normalizedHomeLocation?.address || user.address || '',
-                  city: normalizedHomeLocation?.city || user.city || '',
-                  state: normalizedHomeLocation?.state || user.state || '',
-                });
-                setIsEditingProfile(true);
-              }}
-            />
+            {getCustomerToken() ? (
+              <>
+                <span style={{ fontSize: 13, color: T.text2, fontWeight: 400 }}>Welcome, <strong style={{ color: T.text, fontWeight: 600 }}>{(user.name || 'User').split(' ')[0]}</strong></span>
+                <button
+                  onClick={() => setProfileOpen(p => !p)}
+                  style={{
+                    width: 38, height: 38, borderRadius: '50%',
+                    background: `linear-gradient(135deg,${T.gold},#0f766e)`,
+                    border: 'none', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', color: '#fff',
+                    fontSize: 14, fontWeight: 700, fontFamily: "'Poppins',sans-serif"
+                  }}
+                >
+                  {user.name ? user.name.charAt(0).toUpperCase() : <FaUser size={15} />}
+                </button>
+                <ProfileDropdown
+                  open={profileOpen}
+                  onClose={() => setProfileOpen(false)}
+                />
+              </>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                style={{
+                  background: T.gold, color: '#fff', border: 'none',
+                  padding: '0.5rem 1.2rem', borderRadius: 50,
+                  fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                  fontFamily: "'Poppins',sans-serif",
+                }}
+              >
+                Login / Sign Up
+              </button>
+            )}
           </div>
         </div>
       </header>
+
+      <CustomerAuthModal 
+        open={showAuthModal} 
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={(newUser) => {
+          setShowAuthModal(false);
+          setUser({ ...user, ...newUser });
+          loadMyBookings();
+          // Optional: re-trigger shops fetch
+        }}
+      />
 
       {/* Main */}
       <main style={{
@@ -1050,104 +1019,13 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
         </div>
       </main>
 
-      {/* Edit Profile Modal */}
-      {isEditingProfile && (
-        <div className="modal-overlay">
-          <form onSubmit={handleSaveProfile} className="modal-content">
-            <h3 style={{ fontSize: 18, fontWeight: 600, color: T.text, marginBottom: '1.25rem' }}>Personal Information</h3>
 
-            <div className="form-grid">
-              <div>
-                <label className="form-label">Full Name</label>
-                <input required value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="form-input" />
-              </div>
-              <div>
-                <label className="form-label">Phone Number</label>
-                <input required type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="form-input" />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '1rem' }}>
-              <label className="form-label">Email Address</label>
-              <input type="email" required value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="form-input" />
-              <p style={{ color: T.text3, fontSize: 11, marginTop: '0.25rem' }}>
-                Note: You'll need to login with your new email next time
-              </p>
-            </div>
-
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label className="form-label">Home Address</label>
-
-              {/* Current Location Button */}
-              <div style={{ marginBottom: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={getCurrentLocation}
-                  disabled={isLoadingLocation}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 1rem',
-                    background: isLoadingLocation ? T.s2 : `rgba(13,148,136,0.1)`,
-                    color: isLoadingLocation ? T.text3 : T.gold,
-                    border: `1px solid ${isLoadingLocation ? T.br : 'rgba(13,148,136,0.3)'}`,
-                    borderRadius: 8, cursor: isLoadingLocation ? 'not-allowed' : 'pointer',
-                    fontSize: 12, fontWeight: 600, fontFamily: "'Poppins',sans-serif",
-                    transition: 'all 0.15s'
-                  }}
-                >
-                  <FaCrosshairs size={14} />
-                  {isLoadingLocation ? 'Getting Location...' : 'Use Current Location'}
-                </button>
-              </div>
-
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ padding: '0.62rem 0.8rem', borderRadius: 8, border: `1px solid ${editHomeLocation ? T.gold : T.br}`, background: editHomeLocation ? 'rgba(13,148,136,0.05)' : T.s2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontFamily: "'Poppins',sans-serif", fontSize: 13, color: editHomeLocation ? T.text : T.text3 }}>
-                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '80%' }}>
-                    {editHomeLocation ? editHomeLocation.address : 'Click on the map below to select your home address...'}
-                  </span>
-                  {editHomeLocation && <FaMapMarkerAlt color={T.gold} />}
-                </div>
-              </div>
-              <div style={{ height: 200, width: '100%', borderRadius: 8, overflow: 'hidden', border: `1px solid ${T.br}`, position: 'relative' }}>
-                <MapContainer
-                  key={editHomeLocation ? `${editHomeLocation.lat}-${editHomeLocation.lng}` : 'default-home-location'}
-                  center={editHomeMapCenter}
-                  zoom={13}
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-                  {editHomeLocation && (
-                    <Marker position={[editHomeLocation.lat, editHomeLocation.lng]}>
-                      <Popup>Your home address</Popup>
-                    </Marker>
-                  )}
-                  <ClickHandler onSelect={(location) => setEditForm((prev) => ({
-                    ...prev,
-                    homeLocation: location,
-                    address: location?.address || prev.address,
-                    city: location?.city || prev.city,
-                    state: location?.state || prev.state,
-                  }))} />
-                </MapContainer>
-              </div>
-              <p style={{ color: T.text3, fontSize: 11, marginTop: '0.5rem' }}>
-                Click on the map to set your home address or use current location button above
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button type="button" onClick={() => setIsEditingProfile(false)} disabled={isSavingProfile} className="btn-cancel">Cancel</button>
-              <button type="submit" disabled={isSavingProfile} className="btn-save">
-                {isSavingProfile ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
     </div>
   );
 };
 
 const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
+  const T = useTheme();
   const [selectedServiceIds, setSelectedServiceIds] = useState([]);
   const [selectedDate, setSelectedDate] = useState(INITIAL_BOOKING_DATE);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -1166,6 +1044,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [effectiveSlotDuration, setEffectiveSlotDuration] = useState(30);
   const [timelineOpen, setTimelineOpen] = useState(Number(shop.open || CUSTOMER_TIMELINE_OPEN));
   const [timelineClose, setTimelineClose] = useState(Number(shop.close || CUSTOMER_TIMELINE_CLOSE));
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const bookingRedirectTimeoutRef = useRef(null);
 
   const selectedServices = shop.services.filter((service) => selectedServiceIds.includes(service.id));
@@ -1370,6 +1249,11 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
     if (!hasSelectedServices || !selectedDate || selectedSlot === null) return;
     if (isHomeVisitBooking && !activeCustomerLocation) return;
     if (isSubmittingBooking) return;
+
+    if (!getCustomerToken()) {
+      setShowAuthModal(true);
+      return;
+    }
 
     if (isTuesdayDateStr(selectedDate.str)) {
       alert('This shop is closed on Tuesday.');
@@ -1724,6 +1608,16 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
           </div>
         </div>
       )}
+
+      <CustomerAuthModal
+        open={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          // Wait briefly for token to persist then confirm booking
+          setTimeout(() => handleConfirmBooking(), 100);
+        }}
+      />
     </div>
   );
 };

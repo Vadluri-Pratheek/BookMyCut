@@ -1,7 +1,9 @@
 import React from 'react';
-import { T } from '../pages/CustomerDashboard';
+import { FaCheck, FaTimes } from 'react-icons/fa';
+import { useTheme } from '../hooks/useTheme';
 
 export const ActionNotice = ({ notice }) => {
+  const T = useTheme();
   if (!notice?.message) {
     return null;
   }

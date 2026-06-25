@@ -1,9 +1,10 @@
 import React from 'react';
 import { FaMapMarkerAlt } from 'react-icons/fa';
-import { C } from '../pages/BarberDashboard';
+import { useBarberTheme } from '../hooks/useTheme';
 import { openDirectionsFromCurrentLocation } from '../utils/navigation';
 
 export const BookingCard = ({ booking }) => {
+  const C = useBarberTheme();
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0', borderBottom: `1px solid ${C.border}` }}>
       <div style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: booking.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14 }}>

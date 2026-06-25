@@ -1,5 +1,4 @@
-import Customer from '../models/customer.model.js';
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 import Shop from '../models/shop.model.js';
 import { sendEmail } from './mailer.js';
 
@@ -19,8 +18,8 @@ const sendBookingCancellationNotification = async ({ booking, cancelledBy, cance
   }
 
   const [customer, barber, shop] = await Promise.all([
-    Customer.findById(booking.customerId).select('name email').lean(),
-    Barber.findById(booking.barberId).select('name').lean(),
+    User.findById(booking.customerId).select('name email').lean(),
+    User.findById(booking.barberId).select('name').lean(),
     Shop.findById(booking.shopId).select('name').lean(),
   ]);
 

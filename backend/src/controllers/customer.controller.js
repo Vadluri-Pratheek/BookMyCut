@@ -1,4 +1,4 @@
-import Customer from '../models/customer.model.js';
+import User from '../models/user.model.js';
 import { normalizeLocationPoint } from '../utils/locationPoint.js';
 
 /**
@@ -31,7 +31,7 @@ const updateProfile = async (req, res, next) => {
 
     // Check if email is being updated and if it's already taken by another customer
     if (email) {
-      const existingCustomer = await Customer.findOne({ 
+      const existingCustomer = await User.findOne({ 
         email: email.trim().toLowerCase(),
         _id: { $ne: req.user.id }
       });
@@ -43,7 +43,7 @@ const updateProfile = async (req, res, next) => {
       }
     }
 
-    const customer = await Customer.findByIdAndUpdate(
+    const customer = await User.findByIdAndUpdate(
       req.user.id,
       { $set: updates },
       { new: true, runValidators: true }

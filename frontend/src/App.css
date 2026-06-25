@@ -26,24 +26,20 @@
 }
 
 .barber-theme .auth-tabs {
-  background: #fff6ed;
+  background: var(--teal-xlight);
 }
 
 .barber-theme .input-group input:focus,
 .barber-theme .input-group textarea:focus,
 .barber-theme .input-group select:focus {
-  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.12);
+  box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.08);
 }
 
 .barber-theme .btn-primary {
-  box-shadow: 0 4px 14px rgba(255, 122, 0, 0.28);
+  box-shadow: 0 4px 14px rgba(255, 122, 0, 0.1);
 }
 
 .barber-theme .btn-primary:hover {
-  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.34);
-}
-
-.barber-theme .mode-btn:hover {
   box-shadow: 0 6px 20px rgba(255, 122, 0, 0.12);
 }
 
@@ -75,7 +71,7 @@
   border-radius: var(--radius-md);
   font-size: 0.93rem;
   color: var(--text-primary);
-  background: #fafafa;
+  background: var(--surface);
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   outline: none;
 }
@@ -84,7 +80,7 @@
 .input-group textarea:focus,
 .input-group select:focus {
   border-color: var(--border-focus);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 3px rgba(13, 148, 136, .12);
 }
 
@@ -329,7 +325,7 @@
   padding: 1.1rem 1.4rem;
   border: 2px solid var(--border);
   border-radius: var(--radius-lg);
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   text-align: left;
   transition: all 0.22s ease;
@@ -431,7 +427,7 @@
   cursor: pointer;
   transition: all var(--transition);
   user-select: none;
-  background: #fafafa;
+  background: var(--surface);
 }
 
 .service-card:hover {
@@ -538,4 +534,54 @@
   display: flex;
   align-items: center;
   gap: 0.3rem;
+}
+
+/* ── Dark mode overrides ────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  .card {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .auth-tabs {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .auth-tab {
+    color: var(--text-secondary);
+  }
+  .auth-tab.active {
+    background: var(--teal);
+    color: #fff;
+  }
+  .btn-cancel {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .gender-radio {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+  .gender-radio.active {
+    background: var(--teal-light);
+    border-color: var(--teal);
+    color: var(--teal);
+  }
+  .mode-btn {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .service-card {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .barber-theme {
+    --bg: #1e1e1c;
+    --surface: #2a2a27;
+    --border: #3d3d3a;
+    --text-primary: #ede9e3;
+    --text-secondary: #b8b4ac;
+    --text-muted: #7a7773;
+  }
 }

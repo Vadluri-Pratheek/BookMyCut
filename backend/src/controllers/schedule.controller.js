@@ -1,4 +1,4 @@
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 import Booking from '../models/booking.model.js';
 import DaySchedule from '../models/daySchedule.model.js';
 import Shop from '../models/shop.model.js';
@@ -85,7 +85,7 @@ const setupDaySchedule = async (req, res, next) => {
         barberUpdates.isAcceptingHomeVisitsToday = true;
       }
 
-      await Barber.findByIdAndUpdate(req.user.id, barberUpdates);
+      await User.findByIdAndUpdate(req.user.id, barberUpdates);
     }
 
     return res.status(200).json({ success: true, data: savedSchedule });
@@ -145,7 +145,7 @@ const getDayScheduleForShop = async (req, res, next) => {
   try {
     const date = req.query.date || getTodayStr();
 
-    const barbers = await Barber.find({ shopId: req.user.shopId })
+    const barbers = await User.find({ shopId: req.user.shopId })
       .select('-passwordHash')
       .lean();
 

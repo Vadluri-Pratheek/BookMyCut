@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
-
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 
 const protect = (req, res, next) => {
   try {
@@ -25,21 +24,13 @@ const protect = (req, res, next) => {
   }
 };
 
-const protectCustomer = (req, res, next) =>
-  protect(req, res, () => {
-    if (req.user.userType !== 'customer') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Customers only.',
-      });
-    }
+const protectUser = protect;
 
-    return next();
-  });
+const protectCustomer = protectUser;
 
 const protectBarber = (req, res, next) =>
   protect(req, res, async () => {
-    if (req.user.userType !== 'barber') {
+    if (!req.user.roles || !req.user.roles.includes('barber')) {
       return res.status(403).json({
         success: false,
         message: 'Access denied. Barbers only.',
@@ -47,8 +38,9 @@ const protectBarber = (req, res, next) =>
     }
 
     try {
-      const barber = await Barber.findById(req.user.id).select('role shopId').lean();
+      const barber = await User.findById(req.user.id).select('shopRole shopId roles').lean();
 
+      // Ensure they actually have a shop assigned to act as a barber
       if (!barber || !barber.shopId) {
         return res.status(401).json({
           success: false,
@@ -58,7 +50,7 @@ const protectBarber = (req, res, next) =>
 
       req.user = {
         ...req.user,
-        role: barber.role,
+        role: barber.shopRole, // mapping old role to shopRole
         shopId: barber.shopId,
       };
 
@@ -73,9 +65,7 @@ const protectBarber = (req, res, next) =>
 
 export {
   protect,
+  protectUser,
   protectCustomer,
   protectBarber,
 };
-
-
-

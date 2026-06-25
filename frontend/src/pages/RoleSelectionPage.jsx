@@ -1,8 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaUser, FaScissors } from 'react-icons/fa6';
-import BrandLogo from '../components/BrandLogo';
-import RoleSelectionIntro from '../components/RoleSelectionIntro';
 import '../App.css';
 
 const ROLE_CARDS = [
@@ -11,9 +9,8 @@ const ROLE_CARDS = [
     icon: <FaUser size={36} />,
     title: 'I am a Customer',
     subtitle: 'Book barber services easily',
-    route: '/auth/customer',
+    route: '/dashboard',
     accentBg: 'linear-gradient(135deg, #0d9488, #0f766e)',
-    accentLight: '#f0fdfa',
     accentBorder: '#99f6e4',
   },
   {
@@ -23,15 +20,12 @@ const ROLE_CARDS = [
     subtitle: 'Manage your shop and appointments',
     route: '/auth/barber',
     accentBg: 'linear-gradient(135deg, #f97316, #ea580c)',
-    accentLight: '#fff7ed',
     accentBorder: '#fed7aa',
   },
 ];
 
 const RoleSelectionPage = () => {
   const navigate = useNavigate();
-  const logoTargetRef = useRef(null);
-  const [introComplete, setIntroComplete] = useState(false);
 
   const handleSelect = (card) => {
     localStorage.setItem('bmc_role', card.id);
@@ -39,34 +33,10 @@ const RoleSelectionPage = () => {
   };
 
   return (
-    <div className="page-center role-selection-shell" style={{ background: 'var(--bg)' }}>
-      {!introComplete && (
-        <RoleSelectionIntro
-          targetRef={logoTargetRef}
-          onComplete={() => setIntroComplete(true)}
-        />
-      )}
-
-      <div
-        className={`role-selection-content ${introComplete ? 'role-selection-content--ready' : 'role-selection-content--intro'}`}
-        style={{ width: '100%', maxWidth: '520px' }}
-      >
-        {/* Logo */}
+    <div className="page-center" style={{ background: 'var(--bg)' }}>
+      <div style={{ width: '100%', maxWidth: '520px' }}>
+        {/* Logo placeholder */}
         <div style={{ textAlign: 'center', marginBottom: '2.65rem' }}>
-          <div
-            ref={logoTargetRef}
-            className={`role-selection-logo-target ${introComplete ? 'role-selection-logo-target--ready' : ''}`}
-          >
-            <BrandLogo
-              size={58}
-              gap={14}
-              containerStyle={{ marginBottom: '1rem' }}
-              textStyle={{
-                fontSize: 'clamp(2.2rem, 5vw, 2.7rem)',
-                letterSpacing: '-0.055em',
-              }}
-            />
-          </div>
           <h1
             style={{
               fontSize: 'clamp(1.45rem, 3.8vw, 1.7rem)',
@@ -93,7 +63,7 @@ const RoleSelectionPage = () => {
                 alignItems: 'center',
                 gap: '1.25rem',
                 padding: '1.5rem',
-                background: '#fff',
+                background: 'var(--surface)',
                 border: `2px solid ${card.accentBorder}`,
                 borderRadius: '18px',
                 cursor: 'pointer',
@@ -125,8 +95,8 @@ const RoleSelectionPage = () => {
                   color: '#fff',
                   flexShrink: 0,
                   boxShadow: card.id === 'customer'
-                    ? '0 5px 18px rgba(13,148,136,.3)'
-                    : '0 5px 18px rgba(249,115,22,.3)',
+                    ? '0 5px 18px rgba(13,148,136,.15)'
+                    : '0 5px 18px rgba(249,115,22,.15)',
                 }}
               >
                 {card.icon}

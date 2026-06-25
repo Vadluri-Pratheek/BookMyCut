@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { C } from '../pages/BarberDashboard';
+import { useBarberTheme } from '../hooks/useTheme';
 
 export const StatCard = ({ title, value, trend }) => {
+  const C = useBarberTheme();
   const [hov, setHov] = useState(false);
   return (
     <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{

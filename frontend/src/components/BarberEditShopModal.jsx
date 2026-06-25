@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaMapMarkerAlt, FaCheck } from 'react-icons/fa';
 import { apiRequest } from '../api/client';
-import { C, inputSt, minsToLabel, getCatalogServicesForShopGender, findCatalogServiceForShopService, getServiceGenderSpecificForShop } from '../pages/BarberDashboard';
+import { inputSt, minsToLabel, getCatalogServicesForShopGender, findCatalogServiceForShopService, getServiceGenderSpecificForShop } from '../pages/BarberDashboardUtils';
 import { Label } from './BarberLabel';
 import MapPicker from './MapPicker';
 import ServiceCheckbox from './ServiceCheckbox';
 import { formatCoordinateAddress, normalizeLocation } from '../utils/location';
+import { useBarberTheme } from '../hooks/useTheme';
 
 export const EditShopModal = ({ open, onClose, user, onSave }) => {
+  const C = useBarberTheme();
   const [form, setForm] = useState({
     name: user.shopName,
     address: user.shopAddress,
@@ -18,6 +20,7 @@ export const EditShopModal = ({ open, onClose, user, onSave }) => {
     openTime: user.openTime || 540,
     closeTime: user.closeTime || 1260,
     genderServed: 'Unisex',
+    hasHomeService: false,
   });
   const [busy, setBusy] = useState(false);
   const [loadingShop, setLoadingShop] = useState(false);
@@ -39,6 +42,7 @@ export const EditShopModal = ({ open, onClose, user, onSave }) => {
         openTime: user.openTime || 540,
         closeTime: user.closeTime || 1260,
         genderServed: 'Unisex',
+        hasHomeService: false,
       });
       setLoadedServices([]);
       setSelectedServiceIds([]);
@@ -86,6 +90,7 @@ export const EditShopModal = ({ open, onClose, user, onSave }) => {
           openTime: shop.openTime || 540,
           closeTime: shop.closeTime || 1260,
           genderServed,
+          hasHomeService: shop.hasHomeService || false,
         });
         setLoadedServices(services);
         setSelectedServiceIds(mappedServiceIds);
@@ -249,6 +254,16 @@ export const EditShopModal = ({ open, onClose, user, onSave }) => {
               </select>
             </div>
           </div>
+
+          <label className="check-label" style={{ marginTop: '0.25rem', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 13, color: C.text }}>
+            <input
+              type="checkbox"
+              checked={form.hasHomeService}
+              onChange={e => setForm({ ...form, hasHomeService: e.target.checked })}
+              style={{ accentColor: C.teal, width: 16, height: 16 }}
+            />
+            Offer Home Services
+          </label>
 
           <div style={{ fontSize: 13, fontWeight: 800, color: C.text, marginTop: '0.25rem' }}>Services</div>
           <div>

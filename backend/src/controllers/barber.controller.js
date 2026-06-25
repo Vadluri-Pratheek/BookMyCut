@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-import Barber from '../models/barber.model.js';
+import User from '../models/user.model.js';
 import Booking from '../models/booking.model.js';
 import DaySchedule from '../models/daySchedule.model.js';
 import { getTodayStr } from '../utils/timeHelpers.js';
@@ -13,7 +13,7 @@ import { normalizeUpiId } from '../utils/upi.js';
  */
 const getBarberProfile = async (req, res, next) => {
   try {
-    const barber = await Barber.findById(req.user.id)
+    const barber = await User.findById(req.user.id)
       .select('-passwordHash')
       .populate('shopId', 'name shopCode genderServed hasHomeService')
       .lean();
@@ -32,7 +32,7 @@ const getBarberProfile = async (req, res, next) => {
 const toggleHomeServiceAvailability = async (req, res, next) => {
   try {
     const { isAccepting } = req.body;
-    const barber = await Barber.findById(req.user.id);
+    const barber = await User.findById(req.user.id);
 
     if (!barber.canOfferHomeServices) {
       return res.status(400).json({
@@ -79,7 +79,7 @@ const getTravelingBarbersForShop = async (req, res, next) => {
     const { shopId } = req.params;
     const { date } = req.query;
 
-    const barbers = await Barber.find({ shopId, canOfferHomeServices: true })
+    const barbers = await User.find({ shopId, canOfferHomeServices: true })
       .select('-passwordHash')
       .lean();
 
@@ -106,7 +106,7 @@ const getTravelingBarbersForShop = async (req, res, next) => {
  */
 const getShopStaff = async (req, res, next) => {
   try {
-    const staffList = await Barber.find({ shopId: req.user.shopId, role: 'staff' })
+    const staffList = await User.find({ shopId: req.user.shopId, shopRole: 'staff' })
       .select('-passwordHash')
       .sort({ name: 1 })
       .lean();
@@ -130,10 +130,10 @@ const removeShopStaff = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Barber not found' });
     }
 
-    const barber = await Barber.findOne({
+    const barber = await User.findOne({
       _id: barberId,
       shopId: req.user.shopId,
-      role: 'staff',
+      shopRole: 'staff',
     });
 
     if (!barber) {
@@ -180,7 +180,7 @@ const updateBarberProfile = async (req, res, next) => {
     if (phone) updates.phone = phone;
     if (upiId !== undefined) updates.upiId = normalizeUpiId(upiId);
 
-    const barber = await Barber.findByIdAndUpdate(req.user.id, updates, {
+    const barber = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,
       runValidators: true,
     }).select('-passwordHash').lean();
@@ -199,5 +199,6 @@ export {
   removeShopStaff,
   updateBarberProfile,
 };
+
 
 

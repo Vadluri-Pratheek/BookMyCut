@@ -2,8 +2,8 @@ import mongoose from 'mongoose';
 
 import Booking from '../models/booking.model.js';
 import Shop from '../models/shop.model.js';
-import Barber from '../models/barber.model.js';
-import Customer from '../models/customer.model.js';
+
+import User from '../models/user.model.js';
 import DaySchedule from '../models/daySchedule.model.js';
 import {
   getAvailableSlots as computeAvailableSlots,
@@ -235,7 +235,7 @@ const getAvailableSlotsHandler = async (req, res, next) => {
       });
     }
 
-    const barber = await Barber.findById(barberId).lean();
+    const barber = await User.findById(barberId).lean();
     if (!barber) {
       return res.status(404).json({ success: false, message: 'Barber not found' });
     }
@@ -318,7 +318,7 @@ const getShopAggregatedAvailability = async (req, res, next) => {
       });
     }
 
-    const barbers = await Barber.find({ shopId }).lean();
+    const barbers = await User.find({ shopId }).lean();
 
     if (!barbers.length) {
       return res.status(200).json({
@@ -520,7 +520,7 @@ const createBooking = async (req, res, next) => {
 
     await session.startTransaction();
 
-    const customer = await Customer.findById(req.user.id).select('homeLocation').session(session).lean();
+    const customer = await User.findById(req.user.id).select('homeLocation').session(session).lean();
     const requestedLocation = getRequestCustomerLocation({ body: req.body });
     const resolvedCustomerLocation =
       normalizeLocationPoint(requestedLocation)
@@ -544,7 +544,7 @@ const createBooking = async (req, res, next) => {
 
     // Verify Barber Auto Assignment Logic
     if (!assignedBarberId) {
-      const barbers = await Barber.find({ shopId }).session(session);
+      const barbers = await User.find({ shopId }).session(session);
       const eligibleBarbers = [];
 
       // STEP 1 - Find all free barbers
@@ -613,7 +613,7 @@ const createBooking = async (req, res, next) => {
       }
     } else {
       // RULE 2, 3, 4 Verifications constraints for explicit barber requests
-      const barber = await Barber.findById(assignedBarberId).session(session);
+      const barber = await User.findById(assignedBarberId).session(session);
       if (!barber || String(barber.shopId) !== String(shopId)) {
         await session.abortTransaction();
         return res.status(400).json({ success: false, message: 'Invalid barber selected' });
