@@ -38,7 +38,6 @@ const userSchema = new mongoose.Schema(
     homeLocation: { type: locationPointSchema, default: null },
 
     // Barber specific fields
-    upiId: { type: String, default: '', trim: true, lowercase: true },
     shopRole: { type: String, enum: ['owner', 'staff'] }, // previously 'role' in Barber
     shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
     canOfferHomeServices: { type: Boolean, default: false },

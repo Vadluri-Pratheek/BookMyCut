@@ -4,7 +4,6 @@ import User from '../models/user.model.js';
 import Booking from '../models/booking.model.js';
 import DaySchedule from '../models/daySchedule.model.js';
 import { getTodayStr } from '../utils/timeHelpers.js';
-import { normalizeUpiId } from '../utils/upi.js';
 
 /**
  * Returns the authenticated barber profile and linked shop details.
@@ -174,11 +173,10 @@ const removeShopStaff = async (req, res, next) => {
  */
 const updateBarberProfile = async (req, res, next) => {
   try {
-    const { name, phone, upiId } = req.body;
+    const { name, phone } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (phone) updates.phone = phone;
-    if (upiId !== undefined) updates.upiId = normalizeUpiId(upiId);
 
     const barber = await User.findByIdAndUpdate(req.user.id, updates, {
       new: true,

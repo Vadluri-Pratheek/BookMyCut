@@ -231,7 +231,7 @@ const getPublicBarbersForShop = async (req, res, next) => {
     }
 
     const barbers = await User.find({ shopId })
-      .select('name role canOfferHomeServices isAcceptingHomeVisitsToday isAvailableToday upiId')
+      .select('name role canOfferHomeServices isAcceptingHomeVisitsToday isAvailableToday')
       .lean();
 
     return res.status(200).json({ success: true, data: barbers });

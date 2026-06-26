@@ -11,7 +11,6 @@ import {
 } from '../utils/barberScheduleDefaults.js';
 import { generateShopCode } from '../utils/generateCode.js';
 import { sendEmail } from '../utils/mailer.js';
-import { normalizeUpiId } from '../utils/upi.js';
 
 const signToken = (payload) =>
   jwt.sign(payload, process.env.JWT_SECRET, {
@@ -153,7 +152,6 @@ export const login = async (req, res, next) => {
           shopId: user.shopId ? user.shopId._id : null,
           shopName: user.shopId ? user.shopId.name : '',
           shopCode: user.shopId ? user.shopId.shopCode : '',
-          upiId: user.upiId,
           generalWorkStart: user.generalWorkStart,
           generalWorkEnd: user.generalWorkEnd,
           generalBreaks: user.generalBreaks,
@@ -221,7 +219,6 @@ export const verifyEmail = async (req, res, next) => {
           shopId: user.shopId ? user.shopId._id : null,
           shopName: user.shopId ? user.shopId.name : '',
           shopCode: user.shopId ? user.shopId.shopCode : '',
-          upiId: user.upiId,
           generalWorkStart: user.generalWorkStart,
           generalWorkEnd: user.generalWorkEnd,
           generalBreaks: user.generalBreaks,
@@ -318,7 +315,6 @@ export const getMe = async (req, res, next) => {
         shopId: user.shopId ? user.shopId._id : null,
         shopName: user.shopId ? user.shopId.name : '',
         shopCode: user.shopId ? user.shopId.shopCode : '',
-        upiId: user.upiId,
         generalWorkStart: user.generalWorkStart,
         generalWorkEnd: user.generalWorkEnd,
         generalBreaks: user.generalBreaks,
@@ -339,7 +335,7 @@ export const setupBarberOwner = async (req, res, next) => {
     }
 
     const {
-      upiId, shopName, shopAddress, shopLng, shopLat, shopCity, shopState,
+      shopName, shopAddress, shopLng, shopLat, shopCity, shopState,
       genderServed, hasHomeService, services, openTime, closeTime,
       generalWorkStart, generalWorkEnd, generalBreaks = [], canOfferHomeServices
     } = req.body;
@@ -372,7 +368,6 @@ export const setupBarberOwner = async (req, res, next) => {
       closeTime,
     });
 
-    user.upiId = normalizeUpiId(upiId);
     user.shopRole = 'owner';
     user.shopId = shop._id;
     user.canOfferHomeServices = Boolean(canOfferHomeServices);
@@ -394,7 +389,7 @@ export const setupBarberOwner = async (req, res, next) => {
       data: {
         token,
         shopCode,
-        user: { id: user._id, name: user.name, roles: user.roles, upiId: user.upiId || '' },
+        user: { id: user._id, name: user.name, roles: user.roles },
         shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
       },
     });
@@ -413,7 +408,7 @@ export const setupBarberStaff = async (req, res, next) => {
     }
 
     const {
-      upiId, shopCode, generalWorkStart, generalWorkEnd, generalBreaks = [], canOfferHomeServices
+      shopCode, generalWorkStart, generalWorkEnd, generalBreaks = [], canOfferHomeServices
     } = req.body;
 
     const shop = await Shop.findOne({ shopCode }).lean();
@@ -435,7 +430,6 @@ export const setupBarberStaff = async (req, res, next) => {
       await Shop.findByIdAndUpdate(shop._id, { hasHomeService: true });
     }
 
-    user.upiId = normalizeUpiId(upiId);
     user.shopRole = 'staff';
     user.shopId = shop._id;
     user.canOfferHomeServices = normalizedCanOfferHomeServices;
@@ -456,7 +450,7 @@ export const setupBarberStaff = async (req, res, next) => {
       success: true,
       data: {
         token,
-        user: { id: user._id, name: user.name, roles: user.roles, upiId: user.upiId || '' },
+        user: { id: user._id, name: user.name, roles: user.roles },
         shop: { id: shop._id, name: shop.name, shopCode: shop.shopCode },
       },
     });

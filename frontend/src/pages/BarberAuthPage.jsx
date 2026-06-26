@@ -382,7 +382,7 @@ const ModeSelection = ({ onSelect }) => (
 const OwnerSignupForm = ({ onBack }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', upiId: '', password: '', confirmPassword: '',
+    name: '', email: '', phone: '', password: '', confirmPassword: '',
     shopName: '', shopAddress: '', shopCity: '', shopState: '', terms: false,
     generalWorkStart: DEFAULT_GENERAL_WORK_START,
     generalWorkEnd: DEFAULT_GENERAL_WORK_END,
@@ -478,7 +478,6 @@ const OwnerSignupForm = ({ onBack }) => {
       });
 
       const ownerData = {
-        upiId: normalizeUpiId(form.upiId),
         shopName: form.shopName.trim(),
         shopAddress: (form.shopAddress || mapLocation.address || '').trim(),
         shopLng: Number(mapLocation.lng),
@@ -588,9 +587,6 @@ const OwnerSignupForm = ({ onBack }) => {
       <InputField label="Phone Number" id="owner-phone" type="tel"
         placeholder="10-digit mobile number" value={form.phone}
         onChange={set('phone')} error={errors.phone} required />
-      <InputField label="UPI ID" id="owner-upi" type="text"
-        placeholder="yourname@bank" value={form.upiId}
-        onChange={set('upiId')} error={errors.upiId} required />
       <PasswordInput label="Password" id="owner-pw" placeholder="Min. 8 characters"
         value={form.password} onChange={set('password')} error={errors.password}
         required autoComplete="new-password" />
@@ -687,7 +683,7 @@ const OwnerSignupForm = ({ onBack }) => {
 const JoinSignupForm = ({ onBack }) => {
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', upiId: '', password: '', confirmPassword: '',
+    name: '', email: '', phone: '', password: '', confirmPassword: '',
     shopId: '', terms: false,
     generalWorkStart: DEFAULT_GENERAL_WORK_START,
     generalWorkEnd: DEFAULT_GENERAL_WORK_END,
@@ -774,7 +770,6 @@ const JoinSignupForm = ({ onBack }) => {
       });
 
       const staffData = {
-        upiId: normalizeUpiId(form.upiId),
         shopCode: form.shopId.trim(),
         generalWorkStart: timeStrToMins(form.generalWorkStart),
         generalWorkEnd: timeStrToMins(form.generalWorkEnd),
@@ -872,9 +867,6 @@ const JoinSignupForm = ({ onBack }) => {
       <InputField label="Phone Number" id="join-phone" type="tel"
         placeholder="10-digit mobile number" value={form.phone}
         onChange={set('phone')} error={errors.phone} required />
-      <InputField label="UPI ID" id="join-upi" type="text"
-        placeholder="yourname@bank" value={form.upiId}
-        onChange={set('upiId')} error={errors.upiId} required />
       <PasswordInput label="Password" id="join-pw" placeholder="Min. 8 characters"
         value={form.password} onChange={set('password')} error={errors.password}
         required autoComplete="new-password" />

@@ -107,35 +107,8 @@ const emitBookingSync = (payload = {}) => {
   window.dispatchEvent(new CustomEvent(BOOKING_SYNC_EVENT_NAME, { detail }));
 };
 
-const getPastBookingStatusLabel = (booking) => {
-  if (booking.status !== 'cancelled') {
-    return 'Completed';
-  }
-
-  return booking.cancelledBy === 'auto' ? 'Auto Cancelled' : 'Cancelled';
-};
-
 const formatServiceNames = (services = []) => services.map((service) => service.name).join(', ');
-const UPI_ID_REGEX = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
 
-const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
-
-const isValidUpiId = (value = '') => UPI_ID_REGEX.test(normalizeUpiId(value));
-
-const buildUpiPaymentLink = ({ upiId, payeeName, amount, note }) => {
-  const params = new URLSearchParams({
-    pa: normalizeUpiId(upiId),
-    pn: payeeName,
-    am: Number(amount || 0).toFixed(2),
-    cu: 'INR',
-  });
-
-  if (note) {
-    params.set('tn', note);
-  }
-
-  return `upi://pay?${params.toString()}`;
-};
 
 const formatBookingDateLabel = (isoDate) => {
   if (!isoDate) return '';
@@ -633,7 +606,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
   };
 
   const currentBookingsList = myBookings.filter(b => b.status === 'current');
-  const pastBookingsList = myBookings.filter(b => b.status !== 'current');
 
 
   const filtered = shops.filter(s => {
@@ -953,69 +925,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
             </div>
           </section>
 
-          {/* Past Bookings */}
-          <section style={{ background: T.surface, borderRadius: 16, border: `1px solid ${T.br}`, padding: '1.25rem' }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: T.text, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              📋 Past Bookings
-            </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              {pastBookingsList.length === 0 ? (
-                <div style={{ color: T.text3, fontSize: 13, textAlign: 'center', padding: '1rem' }}>No past bookings.</div>
-              ) : (
-                pastBookingsList.map(b => (
-                  <div key={b.id} style={{ border: `1px solid ${T.br}`, borderRadius: 14, padding: '1rem', background: T.surface, boxShadow: '0 2px 8px rgba(0,0,0,0.04)', minHeight: BOOKING_CARD_MIN_HEIGHT, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, color: T.text, fontSize: 15, ...ONE_LINE_ELLIPSIS }} title={b.shopName}>{b.shopName}</div>
-                        <div style={{ fontSize: 11, color: T.text3, display: 'flex', alignItems: 'flex-start', gap: 4, marginTop: 2 }}>
-                          <FaMapMarkerAlt size={9} style={{ marginTop: 2, flexShrink: 0 }} />
-                          <span className="one-line-ellipsis" title={b.shopAddress}>{b.shopAddress}</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        {b.verificationCode && (
-                          <>
-                            <div style={{ fontSize: 9, color: T.text3, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Verification</div>
-                            <div className="badge-verification">
-                              {b.verificationCode}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', gap: 12 }}>
-                      <div style={{ fontSize: 12, color: T.text2, flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
-                          <div className="two-line-clamp" style={{ fontWeight: 600 }} title={b.service}>{b.service}</div>
-                          {b.isHomeVisit && (
-                            <span className="badge-home">
-                              Home Service
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 11, color: T.text3 }}>{b.date} at {b.slotTime}</div>
-                        <div style={{ fontSize: 10, color: T.text3, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                          {getPastBookingStatusLabel(b)}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleNavigateToShop(b)}
-                        style={{
-                          padding: '4px 8px', fontSize: 11, background: T.surface, color: T.gold,
-                          border: `1px solid ${T.gold}`, borderRadius: 6, cursor: 'pointer', fontWeight: 600,
-                          fontFamily: "'Poppins',sans-serif", transition: 'opacity 0.15s'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                      >
-                        Navigate
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
         </div>
       </main>
 
@@ -1040,7 +949,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [loadingBarbers, setLoadingBarbers] = useState(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
-  const [showPaymentQr, setShowPaymentQr] = useState(false);
+
   const [effectiveSlotDuration, setEffectiveSlotDuration] = useState(30);
   const [timelineOpen, setTimelineOpen] = useState(Number(shop.open || CUSTOMER_TIMELINE_OPEN));
   const [timelineClose, setTimelineClose] = useState(Number(shop.close || CUSTOMER_TIMELINE_CLOSE));
@@ -1064,23 +973,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   const defaultTimelineOpen = Number(shop.open || CUSTOMER_TIMELINE_OPEN);
   const defaultTimelineClose = Number(shop.close || CUSTOMER_TIMELINE_CLOSE);
   const selectedBarberId = selectedBarber?._id || selectedBarber?.id || selectedBarber || null;
-  const paymentBarber =
-    shopBarbers.find((barber) => selectedBarberId && String(barber._id || barber.id || '') === String(selectedBarberId))
-    || shopBarbers.find((barber) => barber.role === 'owner' && isValidUpiId(barber.upiId))
-    || shopBarbers.find((barber) => isValidUpiId(barber.upiId))
-    || null;
-  const paymentUpiId = normalizeUpiId(paymentBarber?.upiId || '');
-  const upiPaymentLink = paymentUpiId
-    ? buildUpiPaymentLink({
-      upiId: paymentUpiId,
-      payeeName: paymentBarber?.role === 'owner' ? shop.name : (paymentBarber?.name || shop.name),
-      amount: totalServicePrice,
-      note: `${shop.name} booking`,
-    })
-    : '';
-  const paymentQrImageUrl = upiPaymentLink
-    ? `https://quickchart.io/qr?size=220&text=${encodeURIComponent(upiPaymentLink)}`
-    : '';
+
   const resolveTimelineBound = (value, fallback) => {
     const normalized = Number(value);
     return Number.isFinite(normalized) ? normalized : fallback;
@@ -1219,7 +1112,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
   }, []);
 
   useEffect(() => {
-    setShowPaymentQr(false);
+
   }, [selectedServiceNames, selectedDate?.str, selectedSlot, totalServicePrice, activeCustomerLocation?.address]);
 
   const completeBookingSuccess = (booking = createdBooking) => {
@@ -1318,11 +1211,6 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
       return;
     }
 
-    if (!paymentUpiId || showPaymentQr) {
-      void handleConfirmBooking();
-      return;
-    }
-
     if (!hasSelectedServices || !selectedDate || selectedSlot === null) return;
     if (isHomeVisitBooking && !activeCustomerLocation) return;
 
@@ -1338,7 +1226,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
       return;
     }
 
-    setShowPaymentQr(true);
+    void handleConfirmBooking();
   };
 
   return (
@@ -1517,19 +1405,6 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
                   </div>
                 )}
 
-                {showPaymentQr && paymentUpiId && (
-                  <div style={{ background: T.s2, padding: '1rem', borderRadius: 12, border: `1px solid ${T.br}`, marginBottom: '1rem', textAlign: 'center' }}>
-                    <div style={{ fontSize: 12, color: T.text2, marginBottom: 6 }}>Scan UPI QR</div>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: T.gold, marginBottom: 10 }}>₹{totalServicePrice}</div>
-                    <img
-                      src={paymentQrImageUrl}
-                      alt="UPI payment QR"
-                      style={{ width: 220, height: 220, borderRadius: 12, border: `1px solid ${T.br}`, background: '#fff', padding: 10, objectFit: 'contain', maxWidth: '100%' }}
-                    />
-                    <div style={{ fontSize: 12, color: T.text2, marginTop: 10, wordBreak: 'break-word' }}>{paymentUpiId}</div>
-                    <div style={{ fontSize: 11, color: T.text3, marginTop: 6 }}>After payment, tap Book Now to confirm your booking.</div>
-                  </div>
-                )}
 
                 <button
                   onClick={handlePrimaryBookingAction}
@@ -1544,7 +1419,7 @@ const ShopBookingPage = ({ shop, onBack, onBookingSuccess }) => {
                   onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
                   onMouseLeave={e => e.currentTarget.style.opacity = '1'}
                 >
-                  {isSubmittingBooking ? 'Booking...' : loadingBarbers ? 'Loading...' : (showPaymentQr && paymentUpiId ? 'Book Now' : 'Confirm Booking')}
+                  {isSubmittingBooking ? 'Booking...' : loadingBarbers ? 'Loading...' : 'Confirm Booking'}
                 </button>
               </div>
             ) : (

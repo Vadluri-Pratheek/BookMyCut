@@ -50,8 +50,7 @@ export const timeStrToMins = (t) => {
   return h * 60 + m;
 };
 export const minsToTimeStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-export const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
-export const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
+
 
 export const normalizeScheduleBreaks = (breaks = []) =>
   Array.isArray(breaks)

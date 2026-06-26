@@ -14,7 +14,7 @@ import { getLocalDateStr, getLocalDateWithOffset, isTuesdayDateStr } from '../ut
 import {
   STYLE, C_FALLBACK, C, BOOKING_SYNC_STORAGE_KEY, BOOKING_SYNC_EVENT_NAME,
   OPEN, CLOSE, TOTAL, DEFAULT_BARBER_WORK_START, DEFAULT_BARBER_WORK_END,
-  pct, pctW, minsToLabel, timeStrToMins, minsToTimeStr, upiRe, normalizeUpiId,
+  pct, pctW, minsToLabel, timeStrToMins, minsToTimeStr,
   normalizeScheduleBreaks, getDefaultBarberSchedule, getVisibleTimelineSegment,
   getVisibleWorkWindow, emitBookingSync, getDs, getDayLbl, DATE_PILLS, TODAY, AV,
   CURRENT_CUSTOMER_BUFFER_SECONDS, getCatalogServicesForShopGender,
@@ -75,7 +75,6 @@ const BarberDashboard = () => {
     shopLat: cachedBarberProfile?.shopLat ?? null,
     shopLng: cachedBarberProfile?.shopLng ?? null,
     shopCode: cachedBarberProfile?.shopCode || '',
-    upiId: cachedBarberProfile?.upiId || '',
     openTime: cachedBarberProfile?.openTime ?? 540,
     closeTime: cachedBarberProfile?.closeTime ?? 1260,
     generalWorkStart: cachedBarberProfile?.generalWorkStart ?? DEFAULT_BARBER_WORK_START,
