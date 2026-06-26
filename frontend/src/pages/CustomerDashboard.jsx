@@ -421,8 +421,8 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
             if (shopRows.length === 0) {
               // Fallback to New York for demo purposes if no shops are found near user
               const defaultParams = new URLSearchParams({ gender });
-              defaultParams.set('lng', '-74.0060');
-              defaultParams.set('lat', '40.7128');
+              defaultParams.set('lng', '79.5941');
+              defaultParams.set('lat', '17.9689');
               shopRows = await requestShops(defaultParams);
             }
           }
@@ -430,15 +430,15 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
           shopRows = await requestShops(fallbackParams);
           if (shopRows.length === 0) {
             const defaultParams = new URLSearchParams({ gender });
-            defaultParams.set('lng', '-74.0060');
-            defaultParams.set('lat', '40.7128');
+            defaultParams.set('lng', '79.5941');
+            defaultParams.set('lat', '17.9689');
             shopRows = await requestShops(defaultParams);
           }
         } else {
           // Default to New York if no location is available
           const defaultParams = new URLSearchParams({ gender });
-          defaultParams.set('lng', '-74.0060');
-          defaultParams.set('lat', '40.7128');
+          defaultParams.set('lng', '79.5941');
+          defaultParams.set('lat', '17.9689');
           shopRows = await requestShops(defaultParams);
         }
 
