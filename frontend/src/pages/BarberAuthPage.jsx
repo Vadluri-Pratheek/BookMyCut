@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUserPlus, FaArrowLeft, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaArrowLeft, FaMapMarkerAlt } from 'react-icons/fa';
 import {
   FaStore, FaLink,
   FaCircleCheck, FaUser, FaEye, FaEyeSlash
@@ -24,7 +24,7 @@ import '../App.css';
 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phoneRe = /^[6-9]\d{9}$/;
-const upiRe = /^[a-zA-Z0-9._-]{2,}@[a-zA-Z0-9.-]{2,}$/;
+
 const DEFAULT_GENERAL_WORK_START = '09:00';
 const DEFAULT_GENERAL_WORK_END = '21:00';
 const BARBER_TERMS = [
@@ -41,7 +41,7 @@ const timeStrToMins = (value) => {
   return (hours * 60) + minutes;
 };
 
-const normalizeUpiId = (value = '') => String(value).trim().toLowerCase();
+
 
 const buildGeneralBreaksPayload = (form) => {
   if (!form.generalLunchStart || !form.generalLunchEnd) {
@@ -129,7 +129,6 @@ const persistBarberSession = (payload = {}) => {
     shopId: profile.shopId || shop?.id || null,
     shopName: profile.shopName || shop?.name || '',
     shopCode: profile.shopCode || shop?.shopCode || '',
-    upiId: profile.upiId || '',
   });
 };
 
@@ -158,8 +157,7 @@ const validatePersonal = (f) => {
   else if (!emailRe.test(f.email)) e.email = 'Enter a valid email';
   if (!f.phone) e.phone = 'Phone number is required';
   else if (!phoneRe.test(f.phone)) e.phone = 'Enter a valid 10-digit mobile number';
-  if (!f.upiId?.trim()) e.upiId = 'UPI ID is required';
-  else if (!upiRe.test(normalizeUpiId(f.upiId))) e.upiId = 'Enter a valid UPI ID';
+
   if (!f.password) e.password = 'Password is required';
   else if (f.password.length < 8) e.password = 'Minimum 8 characters';
   if (!f.confirmPassword) e.confirmPassword = 'Please confirm your password';

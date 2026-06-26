@@ -5,7 +5,6 @@ import BrandLogo from '../components/BrandLogo';
 import InputField from '../components/InputField';
 import PasswordInput from '../components/PasswordInput';
 import ForgotPasswordForm from '../components/ForgotPasswordForm';
-import MapPicker from '../components/MapPicker';
 import RoleBadge from '../components/RoleBadge';
 import { apiRequest, setCustomerProfileCache, setCustomerToken } from '../api/client';
 import '../App.css';

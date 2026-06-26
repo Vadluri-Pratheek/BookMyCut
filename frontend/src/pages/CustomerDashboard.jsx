@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FaSearch, FaStar, FaMapMarkerAlt, FaClock, FaArrowLeft, FaCheck, FaCrosshairs } from 'react-icons/fa';
 import { FaScissors, FaUser, FaChevronDown, FaXmark, FaCalendarDays } from 'react-icons/fa6';
 import {
@@ -181,25 +181,10 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     name: cachedCustomerProfile?.name || '',
     phone: cachedCustomerProfile?.phone || '',
     email: cachedCustomerProfile?.email || '',
-    gender: cachedCustomerProfile?.gender || '',
-    address: cachedCustomerProfile?.address || '',
-    city: cachedCustomerProfile?.city || '',
-    state: cachedCustomerProfile?.state || '',
     homeLocation: normalizeLocation(cachedCustomerProfile?.homeLocation) || null,
   });
   const [userLoading, setUserLoading] = useState(!cachedCustomerProfile);
-  const initialGender = useMemo(() => {
-    if (cachedCustomerProfile?.gender) return cachedCustomerProfile.gender;
-    try {
-      const token = getCustomerToken();
-      if (token) {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.gender) return payload.gender;
-      }
-    } catch { /* ignore */ }
-    return 'Male';
-  }, [cachedCustomerProfile?.gender]);
-  const [filterGender, setFilterGender] = useState(initialGender);
+  const [filterGender, setFilterGender] = useState('Male');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [cancellingBookingId, setCancellingBookingId] = useState(null);
@@ -225,10 +210,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
             name: res.data.name || '',
             email: res.data.email || '',
             phone: res.data.phone || '',
-            gender: res.data.gender || '',
-            city: res.data.city || '',
-            state: res.data.state || '',
-            address: res.data.address || '',
             homeLocation: normalizeLocation(res.data.homeLocation) || null,
           };
           setUser(nextUser);
@@ -361,8 +342,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
         const searchLocation = savedHomeLocation || userLocation || null;
         const fetchKey = JSON.stringify({
           gender,
-          city: user.city || '',
-          state: user.state || '',
           lat: searchLocation?.lat ?? null,
           lng: searchLocation?.lng ?? null,
         });
@@ -372,12 +351,6 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
         }
 
         setLoadingShops(!hasLoadedShopsRef.current);
-        const fallbackParams = new URLSearchParams({ gender });
-        if (user.city) {
-          fallbackParams.set('city', user.city);
-        } else if (user.state) {
-          fallbackParams.set('state', user.state);
-        }
 
         let shopRows = [];
 
@@ -386,29 +359,10 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
           nearbyParams.set('lng', String(searchLocation.lng));
           nearbyParams.set('lat', String(searchLocation.lat));
           shopRows = await requestShops(nearbyParams);
+        }
 
-          if (shopRows.length === 0) {
-            if (user.city || user.state) {
-              shopRows = await requestShops(fallbackParams);
-            }
-            if (shopRows.length === 0) {
-              // Fallback to New York for demo purposes if no shops are found near user
-              const defaultParams = new URLSearchParams({ gender });
-              defaultParams.set('lng', '79.5941');
-              defaultParams.set('lat', '17.9689');
-              shopRows = await requestShops(defaultParams);
-            }
-          }
-        } else if (user.city || user.state) {
-          shopRows = await requestShops(fallbackParams);
-          if (shopRows.length === 0) {
-            const defaultParams = new URLSearchParams({ gender });
-            defaultParams.set('lng', '79.5941');
-            defaultParams.set('lat', '17.9689');
-            shopRows = await requestShops(defaultParams);
-          }
-        } else {
-          // Default to New York if no location is available
+        if (shopRows.length === 0) {
+          // Fallback to Hyderabad area for demo purposes
           const defaultParams = new URLSearchParams({ gender });
           defaultParams.set('lng', '79.5941');
           defaultParams.set('lat', '17.9689');
@@ -457,7 +411,7 @@ const DashboardPage = ({ onBook, refreshKey = 0, recentBooking = null }) => {
     return () => {
       cancelled = true;
     };
-  }, [user.gender, filterGender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, user.city, user.state, userLoading, user.homeLocation, userLocation]);
+  }, [filterGender, user.homeLocation?.lat, user.homeLocation?.lng, userLocation?.lat, userLocation?.lng, userLoading, user.homeLocation, userLocation]);
 
   const loadMyBookings = useCallback(async () => {
     const token = getCustomerToken();

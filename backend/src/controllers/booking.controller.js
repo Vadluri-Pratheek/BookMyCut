@@ -895,7 +895,7 @@ const getShopBookingsBarber = async (req, res, next) => {
     const shop = await Shop.findById(req.user.shopId).select('location').lean();
 
     const bookings = await Booking.find({ shopId: req.user.shopId, date })
-      .populate('customerId', 'name phone gender')
+      .populate('customerId', 'name phone')
       .populate('barberId', 'name')
       .sort({ slotStartMinutes: 1 })
       .lean();
