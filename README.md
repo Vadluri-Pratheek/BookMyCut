@@ -12,16 +12,16 @@ customers find nearby shops.
 
 ## Key Technical Features
 
-- **Interval-merging slot algorithm** — computes real-time available slots
-  by merging existing bookings and shop working hours, so no two customers
-  can be shown (or book) a conflicting time. *(Describe your actual algorithm
-  here in 2-3 sentences — this is your strongest differentiator and it's
-  currently invisible to anyone reading the repo.)*
+- **Real-time slot locking** — each barber's dashboard shows a live timeline
+  of time slots. When a customer books a slot, it's immediately locked on
+  the barber's side and removed from the availability list shown to other
+  customers, guaranteeing no two customers can ever book the same slot.
 - **MongoDB transactions** — booking creation is wrapped in a transaction so
   a slot can never be double-booked even under simultaneous requests.
 - **Geospatial search** — nearby-shop search using MongoDB geospatial queries
   with a Haversine-based distance buffer.
-- **JWT authentication** — secured customer/shop-owner auth flow.
+- **JWT authentication** — separate registration/login flows for customers,
+  barber shop owners, and barber staff (staff join via a shop code).
 
 ## Tech Stack
 
@@ -85,17 +85,24 @@ npm run dev    # http://localhost:5173
 
 | Method | Endpoint | Description |
 |---|---|---|
+| POST | `/api/auth/customer/register` | Registers a new customer |
+| POST | `/api/auth/customer/login` | Authenticates a customer and returns a JWT |
+| GET | `/api/auth/customer/me` | Returns the logged-in customer's profile (protected) |
+| POST | `/api/auth/barber/register/owner` | Registers a new barbershop owner and shop (services, hours, location, gender served) |
+| POST | `/api/auth/barber/register/staff` | Registers barber staff under an existing shop via shop code |
+| POST | `/api/auth/barber/login` | Authenticates a barber/owner and returns a JWT |
+| GET | `/api/auth/barber/me` | Returns the logged-in barber's profile and shop (protected) |
 | GET | `/api/shops/nearby` | Geospatial search for nearby shops |
-| GET | `/api/bookings/available-slots` | Returns merged available slots for a shop/date |
+| GET | `/api/bookings/available-slots` | Returns real-time available slots for a shop/date |
 | POST | `/api/bookings` | Creates a booking inside a MongoDB transaction |
 
 
 ## What I'd Improve Next
 
-- [Booking the slot for a different person and at different location]
-- [Add payment integration]
+- Booking the slot for a different person and at different location
+- Add payment integration
 
 ## Author
 
-Built as part of a three-person team — Vadluri Pratheek,Gurjigalla Akhilesh,Tera Sai Aswin Reddy
+Built as part of a three-person team — Vadluri Pratheek, Gurjigalla Akhilesh, Tera Sai Aswin Reddy.
 NIT Warangal.
