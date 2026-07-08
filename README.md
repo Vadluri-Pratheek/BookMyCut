@@ -1,76 +1,106 @@
-# Barber Service Booking and Management System
+# BookMyCut — Barber Shop Booking & Slot Management System
 
-A full-stack MERN application for managing barber shop bookings and services.
+A full-stack MERN application for real-time barber shop appointment booking,
+with conflict-free slot management and location-based shop discovery.
+
+## Problem
+
+Walk-in barber shop booking leads to double-bookings and long wait times.
+BookMyCut lets customers book a specific time slot in advance, guarantees
+that slot won't be double-booked even under concurrent requests, and helps
+customers find nearby shops.
+
+## Key Technical Features
+
+- **Interval-merging slot algorithm** — computes real-time available slots
+  by merging existing bookings and shop working hours, so no two customers
+  can be shown (or book) a conflicting time. *(Describe your actual algorithm
+  here in 2-3 sentences — this is your strongest differentiator and it's
+  currently invisible to anyone reading the repo.)*
+- **MongoDB transactions** — booking creation is wrapped in a transaction so
+  a slot can never be double-booked even under simultaneous requests.
+- **Geospatial search** — nearby-shop search using MongoDB geospatial queries
+  with a Haversine-based distance buffer.
+- **JWT authentication** — secured customer/shop-owner auth flow.
 
 ## Tech Stack
-- **Frontend**: React (Vite)
-- **Backend**: Node.js + Express
-- **Database**: MongoDB (Mongoose)
+
+- **Frontend:** React (Vite)
+- **Backend:** Node.js, Express
+- **Database:** MongoDB (Mongoose)
+- **Auth:** JWT
+- **Deployment:** Render (see `RENDER_DEPLOYMENT.md`)
 
 ## Project Structure
 
-```text
-backend/                  # Node.js + Express API
-  src/
-    app.js                # Express app setup and routes
-    index.js              # DB connection and server startup
-    config/               # Database/config setup
-    controllers/          # Route controllers
-    middleware/           # Auth and role middleware
-    models/               # Mongoose schemas/models
-    routes/               # API route definitions
-    utils/                # Shared backend helpers
-  .env                    # Environment variables
-  .gitignore
-  package.json
-  server.js               # Compatibility entry point
-
-frontend/                 # React app (Vite)
-  public/
-  src/
-    assets/
-    App.jsx
-    main.jsx
-  .env                    # Frontend env (VITE_API_BASE_URL)
-  index.html
-  package.json
+```
+├── backend/               # Node.js + Express API
+│   ├── controllers/       # Route controllers
+│   ├── middleware/        # Auth, error handling
+│   ├── models/            # Mongoose schemas
+│   ├── routes/            # API route definitions
+│   └── server.js          # Entry point
+└── frontend/              # React app (Vite)
+    ├── src/
+    │   ├── App.jsx
+    │   └── main.jsx
+    └── index.html
 ```
 
-## Getting Started
+## Setup & Usage
 
-### Prerequisites
-- Node.js (v18+)
-- MongoDB (local or Atlas)
+**Prerequisites:** Node.js v18+, MongoDB (local or Atlas)
 
-### Backend Setup
+```bash
+git clone https://github.com/Vadluri-Pratheek/BookMyCut.git
+cd BookMyCut
+```
 
+**Backend:**
 ```bash
 cd backend
 npm install
-# Update .env with your MongoDB URI and JWT secret
-npm run dev    # starts on http://localhost:5000
+# update .env with your MongoDB URI and JWT secret
+npm run dev    # http://localhost:5000
 ```
 
-### Frontend Setup
-
+**Frontend:**
 ```bash
 cd frontend
 npm install
-npm run dev    # starts on http://localhost:5173
+npm run dev    # http://localhost:5173
 ```
 
-## Environment Variables
+## Live Demo
 
-### Backend (`backend/.env`)
-| Variable    | Description                        | Default                                      |
-|-------------|------------------------------------|----------------------------------------------|
-| PORT        | Server port                        | 5000                                         |
-| MONGO_URI   | MongoDB connection string          | mongodb://localhost:27017/barber-booking     |
-| JWT_SECRET  | Secret key for JWT signing         | your_super_secret_jwt_key_here               |
-| NODE_ENV    | Environment (development/production)| development                                 |
+[FILL IN — link to your Render deployment. If it's deployed, this is a
+five-second win: recruiters can click and see a working product instead
+of reading code.]
 
-### Frontend (`frontend/.env`)
-| Variable           | Description               | Default                       |
-|--------------------|---------------------------|-------------------------------|
-| VITE_API_BASE_URL  | Backend API base URL      | http://localhost:5000/api     |
+## Screenshots
 
+[FILL IN — 2-3 screenshots: homepage, booking flow, shop-owner dashboard.
+A README with screenshots gets read; a README without them gets skipped.]
+
+## API Overview
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` | [FILL IN] |
+| POST | `/api/auth/login` | [FILL IN] |
+| GET | `/api/shops/nearby` | Geospatial search for nearby shops |
+| GET | `/api/bookings/available-slots` | Returns merged available slots for a shop/date |
+| POST | `/api/bookings` | Creates a booking inside a MongoDB transaction |
+
+*(Fill this table in from your actual `routes/` files — even a partial table
+massively increases perceived engineering maturity.)*
+
+## What I'd Improve Next
+
+- [Booking the slot for a different person and at different location]
+- [Add payment integration]
+
+## Author
+
+Built as part of a three-person team — Vadluri Pratheek,Gurjigalla Akhilesh,Tera Sai Aswin Reddy
+NIT Warangal.
