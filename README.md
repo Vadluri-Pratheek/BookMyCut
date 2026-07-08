@@ -71,29 +71,24 @@ npm install
 npm run dev    # http://localhost:5173
 ```
 
-## Live Demo
-
-[FILL IN — link to your Render deployment. If it's deployed, this is a
-five-second win: recruiters can click and see a working product instead
-of reading code.]
-
 ## Screenshots
+<img width="1747" height="881" alt="image" src="https://github.com/user-attachments/assets/4ca021d6-777e-400e-82f5-4ef734d0f386" /> 
 
-[FILL IN — 2-3 screenshots: homepage, booking flow, shop-owner dashboard.
-A README with screenshots gets read; a README without them gets skipped.]
+<img width="1732" height="872" alt="image" src="https://github.com/user-attachments/assets/34fd66c3-9bd3-4f69-9175-cc86d3612236" />
+
+<img width="1716" height="851" alt="image" src="https://github.com/user-attachments/assets/298d4f64-a849-4a21-8a98-3ba3d18b22d6" />
+
+
+
 
 ## API Overview
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/auth/register` | [FILL IN] |
-| POST | `/api/auth/login` | [FILL IN] |
 | GET | `/api/shops/nearby` | Geospatial search for nearby shops |
 | GET | `/api/bookings/available-slots` | Returns merged available slots for a shop/date |
 | POST | `/api/bookings` | Creates a booking inside a MongoDB transaction |
 
-*(Fill this table in from your actual `routes/` files — even a partial table
-massively increases perceived engineering maturity.)*
 
 ## What I'd Improve Next
 
